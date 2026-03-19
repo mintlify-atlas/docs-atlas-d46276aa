@@ -1,0 +1,218 @@
+---
+title: "Hand Landmarker"
+description: "How MediaPipe Hand Landmarker detects 21 hand landmarks in real time."
+---
+
+The ATM Playground uses MediaPipe's **Hand Landmarker** task as its only perception layer. It runs entirely in the browser via WebAssembly, requires no server, and returns 21 normalized landmark coordinates per hand per frame.
+
+<Note>
+  All inference runs **client-side**. No video data is sent to a server. Frames are processed locally and discarded after inference, making the app GDPR compliant.
+</Note>
+
+---
+
+## What is Hand Landmarker?
+
+Hand Landmarker is a MediaPipe Solutions vision task that locates key anatomical points on a hand in an image or video stream. It is part of the `@mediapipe/tasks-vision` package and is available for Android, Python, and the Web.
+
+Given a camera frame, Hand Landmarker:
+1. Detects whether a hand is present.
+2. Localizes **21 landmarks** as normalized `(x, y, z)` coordinates.
+3. Reports which hand (`Left` / `Right`) was detected.
+
+Official docs: [developers.google.com/mediapipe/api/solutions/js/tasks-vision.handlandmarker](https://developers.google.com/mediapipe/api/solutions/js/tasks-vision.handlandmarker)
+
+---
+
+## The 21 landmarks
+
+Each hand produces exactly 21 `NormalizedLandmark` objects. Indices and their anatomical names:
+
+| Index | Name | Index | Name |
+|-------|------|-------|------|
+| 0 | WRIST | 11 | MIDDLE_FINGER_PIP |
+| 1 | THUMB_CMC | 12 | MIDDLE_FINGER_DIP |
+| 2 | THUMB_MCP | 13 | RING_FINGER_MCP |
+| 3 | THUMB_IP | 14 | RING_FINGER_PIP |
+| 4 | THUMB_TIP | 15 | RING_FINGER_DIP |
+| 5 | INDEX_FINGER_MCP | 16 | RING_FINGER_TIP |
+| 6 | INDEX_FINGER_PIP | 17 | PINKY_MCP |
+| 7 | INDEX_FINGER_DIP | 18 | PINKY_PIP |
+| 8 | INDEX_FINGER_TIP | 19 | PINKY_DIP |
+| 9 | MIDDLE_FINGER_MCP | 20 | PINKY_TIP |
+| 10 | MIDDLE_FINGER_MCP | | |
+
+Each landmark has `x`, `y` (normalized 0–1 relative to image width/height) and `z` (depth estimate).
+
+<Info>
+  **Landmark 8** (`INDEX_FINGER_TIP`) is the key landmark for the ATM Playground. It drives the on-screen cursor position and is used in collision detection for all interactive cards.
+</Info>
+
+---
+
+## Initializing Hand Landmarker in the app
+
+The initialization lives in `Kernel.jsx`, the core component that owns the webcam loop. The code below is taken directly from the source:
+
+```jsx
+import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
+
+const loadModelAndStartDetection = async () => {
+  // Load the WASM runtime from CDN (required to avoid CORS issues)
+  const vision = await FilesetResolver.forVisionTasks(
+    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.2/wasm'
+  );
+
+  let handLandmarker;
+  try {
+    // Primary: load the model file served from the local public/ directory
+    handLandmarker = await HandLandmarker.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: '/hand_landmarker.task',  // Local fetch
+        delegate: 'GPU',                          // Use GPU for inference
+      },
+      runningMode: 'IMAGE' || 'VIDEO',  // IMAGE mode first, then VIDEO
+      numHands: 1,
+      minHandDetectionConfidence: 0.6,
+      minHandPresenceConfidence: 0.6,
+    });
+    console.log('Loaded hand_landmarker task from local path successfully.');
+  } catch (localError) {
+    // Fallback: load from the CDN bundled inside tasks-vision
+    handLandmarker = await HandLandmarker.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: 'hand_landmarker.task',  // CDN fallback
+        delegate: 'GPU',
+      },
+      runningMode: 'IMAGE' || 'VIDEO',
+      numHands: 1,
+      minHandDetectionConfidence: 0.6,
+      minHandPresenceConfidence: 0.6,
+    });
+    console.log('Loaded hand_landmarker task from CDN successfully as fallback.');
+  }
+};
+```
+
+**Key options explained:**
+
+| Option | Value | Meaning |
+|--------|-------|---------|
+| `modelAssetPath` | `/hand_landmarker.task` | Path to the `.task` model file (precached by service worker) |
+| `delegate` | `'GPU'` | Run inference on the GPU via WebGL |
+| `runningMode` | `'IMAGE'` | Processes individual frames (not a continuous video stream object) |
+| `numHands` | `1` | Detect at most one hand per frame |
+| `minHandDetectionConfidence` | `0.6` | Minimum confidence to report a hand |
+| `minHandPresenceConfidence` | `0.6` | Minimum confidence that a hand is present |
+
+---
+
+## The detection loop
+
+After initialization, the app enters a `requestAnimationFrame` loop that calls `handLandmarker.detect()` on each video frame:
+
+```jsx
+const detectLandmarks = async () => {
+  try {
+    const results = handLandmarker.detect(vidElm);          // Detect on current video frame
+    const landmarks = results?.landmarks;                   // Array of 21-point arrays
+    // MediaPipe internally mirrors handedness; correct it here
+    const handType =
+      (results?.handednesses[0]?.[0]?.categoryName) === 'Left' ? 'Right' : 'Left';
+
+    ctx.clearRect(0, 0, cnvs.width, cnvs.height);
+
+    if (landmarks && landmarks.length > 0) {
+      ctx.drawImage(vidElm, 0, 0, cnvs.width, cnvs.height);
+
+      if (handType === 'Right') {
+        drawLandmarksAndConnectors(landmarks[0], ctx);
+        putGesture(rightHandGestures(landmarks[0]));
+      } else if (handType === 'Left') {
+        drawLandmarksAndConnectors(landmarks[0], ctx);
+        putGesture(leftHandGestures(landmarks[0]));
+      }
+
+      putFingLock(landmarks[0]);  // Dispatch landmark array to Redux store
+    } else {
+      ctx.drawImage(vidElm, 0, 0, cnvs.width, cnvs.height);
+    }
+  } catch (error) {
+    console.error('Error detecting landmarks: ', error);
+  }
+
+  requestAnimationFrame(detectLandmarks);
+};
+```
+
+<Info>
+  Hand Landmarker reports handedness as seen from the model's perspective (i.e., mirrored relative to the user). The code corrects this by inverting the `Left`/`Right` label so that it matches what the user sees in the mirrored camera view.
+</Info>
+
+---
+
+## Drawing landmarks on canvas
+
+The `drawLandmarksAndConnectors` function renders a skeleton overlay on the hidden canvas element. Landmarks are drawn as teal dots; connections are white lines.
+
+```jsx
+const drawLandmarksAndConnectors = (landmarks, ctx) => {
+  const connections = [
+    [0, 1], [1, 2], [2, 3], [3, 4],           // Thumb
+    [0, 5], [5, 6], [6, 7], [7, 8],           // Index finger
+    [5, 9], [9, 10], [10, 11], [11, 12],      // Middle finger
+    [9, 13], [13, 14], [14, 15], [15, 16],    // Ring finger
+    [13, 17], [17, 0], [17, 18], [18, 19], [19, 20], // Little finger
+  ];
+
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 4;
+
+  for (const connection of connections) {
+    const [index1, index2] = connection;
+    ctx.beginPath();
+    ctx.moveTo(
+      landmarks[index1].x * canvasRef.current.width,
+      landmarks[index1].y * canvasRef.current.height
+    );
+    ctx.lineTo(
+      landmarks[index2].x * canvasRef.current.width,
+      landmarks[index2].y * canvasRef.current.height
+    );
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = 'teal';
+  for (const landmark of landmarks) {
+    ctx.beginPath();
+    ctx.arc(
+      landmark.x * canvasRef.current.width,
+      landmark.y * canvasRef.current.height,
+      7, 0, 2 * Math.PI
+    );
+    ctx.fill();
+  }
+};
+```
+
+The canvas is rendered at 10% opacity and sits behind the UI, so the skeleton is visible but does not obscure ATM controls.
+
+---
+
+## Using landmark[8] for cursor positioning
+
+Landmark index 8 (`INDEX_FINGER_TIP`) drives both the on-screen cursor (`CursorTip.jsx`) and hover detection in interactive cards (`CombinedCard.jsx`).
+
+```jsx
+// CursorTip.jsx — position the cursor element
+cursorStyle.left = `${window.innerWidth - props.finger_locx[8].x * window.innerWidth}px`;
+cursorStyle.top  = `${props.finger_locx[8].y * window.innerHeight}px`;
+```
+
+Because the camera feed is mirrored horizontally (the canvas has a `scale(-1, 1)` CSS transform), the x-coordinate is inverted: `window.innerWidth - landmark[8].x * window.innerWidth`.
+
+---
+
+## Model file
+
+The `hand_landmarker.task` file lives in `public/hand_landmarker.task` and is served as a static asset. It is precached by the Workbox service worker so it loads instantly on repeat visits and works offline. See [Offline Support](/guide/offline-support) for caching details.

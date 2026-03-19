@@ -1,0 +1,247 @@
+---
+title: "Gesture Recognition"
+description: "Custom gesture detection logic for HOVER, CLICK, UNDO, GRAB, and BACKSPACE."
+---
+
+The ATM Playground implements gesture recognition using **custom landmark-based logic** rather than MediaPipe's built-in `GestureRecognizer` task. This gives fine-grained control over thresholds and makes it easy to add or modify gestures by editing a single utility file.
+
+---
+
+## Why custom logic instead of GestureRecognizer?
+
+MediaPipe ships a `GestureRecognizer` task that classifies gestures from a pre-trained model. The ATM Playground does not use it for a practical reason: the app needs a very small, specific set of gestures (HOVER, CLICK, UNDO, GRAB) that map directly to landmark geometry. Writing the detection logic from scratch:
+
+- Removes a second model load (faster startup).
+- Gives exact threshold control (tunable per deployment).
+- Makes the logic readable and auditable in a single file: `src/utils/allGesture.js`.
+
+---
+
+## Gesture definitions
+
+All detection functions take a `landmarks` array — the 21 `NormalizedLandmark` objects returned by `HandLandmarker.detect()` — and return a gesture name string.
+
+### Finger state helpers
+
+Before classifying a gesture, the code computes whether each finger is *open* (extended) or *closed*:
+
+```javascript
+// From src/utils/allGesture.js
+const [
+  thumbIsOpen,
+  indexIsOpen,
+  middleIsOpen,
+  ringIsOpen,
+  littleIsOpen
+] = [
+  // Thumb: open if TIP x-coordinate is less than the IP joint x-coordinate
+  landmarks[3].x < landmarks[2].x && landmarks[4].x < landmarks[2].x,
+  // Index: open if TIP y-coordinate is less than PIP joint y-coordinate
+  landmarks[7].y < landmarks[6].y && landmarks[8].y < landmarks[6].y,
+  // Middle: same pattern
+  landmarks[11].y < landmarks[10].y && landmarks[12].y < landmarks[10].y,
+  // Ring
+  landmarks[15].y < landmarks[14].y && landmarks[16].y < landmarks[14].y,
+  // Little
+  landmarks[19].y < landmarks[17].y && landmarks[18].y < landmarks[17].y,
+];
+```
+
+For the thumb, the check is horizontal (x-axis) because the thumb extends sideways. For all other fingers, the check is vertical (y-axis): a lower y value means the fingertip is higher on screen, i.e., the finger is extended.
+
+---
+
+### GRAB — closed fist
+
+Triggered when all five fingers are closed.
+
+```javascript
+if (!thumbIsOpen && !indexIsOpen && !middleIsOpen && !ringIsOpen && !littleIsOpen) {
+  return "GRAB";
+}
+```
+
+**ATM action:** Opens the information modal showing available gestures.
+
+---
+
+### CLICK — thumb + index pinch
+
+Triggered when the Euclidean distance between the thumb tip (landmark 4) and the index finger tip (landmark 8) falls below 0.25 (in normalized coordinates).
+
+```javascript
+} else if (
+  Math.sqrt(
+    Math.pow(landmarks[4].x - landmarks[8].x, 2) +
+    Math.sqrt(Math.pow(landmarks[4].y - landmarks[8].y, 2))
+  ) < 0.25
+) {
+  return "CLICK";
+}
+```
+
+**ATM action:** Activates the hovered element (e.g., presses a PIN digit or confirms a withdrawal).
+
+<Tip>
+  The threshold `0.25` controls click sensitivity. A smaller value (e.g., `0.15`) requires a tighter pinch and reduces accidental clicks. A larger value makes clicking easier but may fire too readily. Tune this to match your camera's field of view and typical user distance.
+</Tip>
+
+---
+
+### UNDO / BACKSPACE — open palm
+
+The open-palm gesture is detected when all five fingers are extended **and** the wrist (landmark 0) is below the middle finger's DIP joint (landmark 12) on the y-axis. Its mapped label differs between hands:
+
+```javascript
+// Right hand: open palm → BACKSPACE
+} else if (
+  thumbIsOpen && indexIsOpen && middleIsOpen && ringIsOpen && littleIsOpen
+  && landmarks[0].y > landmarks[12].y
+) {
+  return "BACKSPACE";
+}
+
+// Left hand: open palm → HOVER (default state)
+} else if (
+  thumbIsOpen && indexIsOpen && middleIsOpen && ringIsOpen && littleIsOpen
+  && landmarks[0].y > landmarks[12].y
+) {
+  return "HOVER";
+}
+```
+
+**ATM action:** Removes the last-entered PIN digit (equivalent to pressing the keyboard Backspace key).
+
+---
+
+### HOVER — default / index up
+
+Any gesture that does not match GRAB, CLICK, or UNDO falls through to the default `"HOVER"` state. In practice this is typically the index finger raised with other fingers curled.
+
+```javascript
+} else {
+  return "HOVER";
+}
+```
+
+**ATM action:** Moves the cursor. No interaction is triggered.
+
+---
+
+### BACKSPACE keyboard fallback
+
+The `UIalert.jsx` component also listens for the physical `Backspace` key as a fallback:
+
+```jsx
+// UIalert.jsx (abbreviated)
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Backspace') {
+    putGesture('BACKSPACE');
+  }
+});
+```
+
+This allows users without gesture capability to still use the PIN entry panel.
+
+---
+
+## Full detection functions
+
+The complete `allGesture.js` file exports two functions — one per hand:
+
+```javascript
+// src/utils/allGesture.js
+
+function rightHandGestures(landmarks) {
+  const [thumbIsOpen, indexIsOpen, middleIsOpen, ringIsOpen, littleIsOpen] = [
+    landmarks[3].x < landmarks[2].x && landmarks[4].x < landmarks[2].x,
+    landmarks[7].y < landmarks[6].y && landmarks[8].y < landmarks[6].y,
+    landmarks[11].y < landmarks[10].y && landmarks[12].y < landmarks[10].y,
+    landmarks[15].y < landmarks[14].y && landmarks[16].y < landmarks[14].y,
+    landmarks[19].y < landmarks[17].y && landmarks[18].y < landmarks[17].y,
+  ];
+
+  if (!thumbIsOpen && !indexIsOpen && !middleIsOpen && !ringIsOpen && !littleIsOpen) {
+    return "GRAB";
+  } else if (
+    Math.sqrt(
+      Math.pow(landmarks[4].x - landmarks[8].x, 2) +
+      Math.sqrt(Math.pow(landmarks[4].y - landmarks[8].y, 2))
+    ) < 0.25
+  ) {
+    return "CLICK";
+  } else if (
+    thumbIsOpen && indexIsOpen && middleIsOpen && ringIsOpen && littleIsOpen
+    && landmarks[0].y > landmarks[12].y
+  ) {
+    return "BACKSPACE";
+  } else {
+    return "HOVER";
+  }
+}
+
+function leftHandGestures(landmarks) {
+  const [thumbIsOpen, indexIsOpen, middleIsOpen, ringIsOpen, littleIsOpen] = [
+    landmarks[3].x < landmarks[2].x && landmarks[4].x < landmarks[2].x,
+    landmarks[7].y < landmarks[6].y && landmarks[8].y < landmarks[6].y,
+    landmarks[11].y < landmarks[10].y && landmarks[12].y < landmarks[10].y,
+    landmarks[15].y < landmarks[14].y && landmarks[16].y < landmarks[14].y,
+    landmarks[19].y < landmarks[17].y && landmarks[18].y < landmarks[17].y,
+  ];
+
+  if (!thumbIsOpen && !indexIsOpen && !middleIsOpen && !ringIsOpen && !littleIsOpen) {
+    return "GRAB";
+  } else if (
+    Math.sqrt(
+      Math.pow(landmarks[4].x - landmarks[8].x, 2) +
+      Math.sqrt(Math.pow(landmarks[4].y - landmarks[8].y, 2))
+    ) < 0.25
+  ) {
+    return "CLICK";
+  } else if (
+    thumbIsOpen && indexIsOpen && middleIsOpen && ringIsOpen && littleIsOpen
+    && landmarks[0].y > landmarks[12].y
+  ) {
+    return "HOVER";      // Left hand open palm = HOVER, not BACKSPACE
+  } else {
+    return "BACKSPACE";  // Left hand default fallthrough = BACKSPACE
+  }
+}
+
+export { rightHandGestures, leftHandGestures };
+```
+
+---
+
+## How gestures dispatch to Redux
+
+Inside `Kernel.jsx`, the detected gesture string is dispatched to the Redux store each frame:
+
+```jsx
+// Kernel.jsx — inside the detectLandmarks loop
+if (handType === 'Right') {
+  putGesture(rightHandGestures(landmarks[0]));
+} else if (handType === 'Left') {
+  putGesture(leftHandGestures(landmarks[0]));
+}
+
+putFingLock(landmarks[0]);  // Also store the full landmark array for cursor/hover
+```
+
+All UI components that need gesture state read it from `state.hand.gesture` via `connect(mapStateToProps)`. See [App Components](/guide/app-components) for the full Redux store shape.
+
+---
+
+## Gesture summary table
+
+<ParamField path="gesture" type="string">
+  The current gesture string stored in `state.hand.gesture`. Possible values:
+</ParamField>
+
+| Value | Hand shape | Condition |
+|-------|------------|-----------|
+| `"HOVER"` | Index up, others relaxed | Default / fallthrough state |
+| `"CLICK"` | Thumb-index pinch | Distance between landmark 4 and 8 < 0.25 |
+| `"GRAB"` | Closed fist | All five `isOpen` flags are `false` |
+| `"BACKSPACE"` | Open palm (right hand) | All fingers open + wrist below middle DIP |
+| `null` | No hand detected | No landmarks returned by Hand Landmarker |

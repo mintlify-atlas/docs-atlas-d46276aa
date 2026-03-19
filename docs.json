@@ -1,122 +1,79 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "GSoC '23 — MediaPipe ATM Playground",
+  "theme": "palm",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#040404",
+    "light": "#f28c00",
+    "dark": "#040404"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "https://icons.duckduckgo.com/ip3/blog.neilblaze.live.ico",
+  "logo": {
+    "light": "https://media.brand.dev/bcd446d5-2e02-4c30-bb8a-50949e71cace.svg",
+    "dark": "https://media.brand.dev/bcd446d5-2e02-4c30-bb8a-50949e71cace.svg"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/Neilblaze/GSOC-23"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/Neilblaze/GSOC-23"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Overview",
         "groups": [
           {
-            "group": "Getting started",
-            "pages": [
-              "index",
-              "quickstart",
-              "development"
-            ]
+            "group": "Introduction",
+            "pages": ["introduction", "gsoc-overview"]
           },
           {
-            "group": "Customization",
-            "pages": [
-              "essentials/settings",
-              "essentials/navigation"
-            ]
-          },
+            "group": "Project",
+            "pages": ["project/architecture", "project/contributions", "project/live-demo"]
+          }
+        ]
+      },
+      {
+        "tab": "Blog",
+        "groups": [
           {
-            "group": "Writing content",
+            "group": "GSoC Journey",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "blog/community-bonding",
+              "blog/mediapipe-overview",
+              "blog/building-interactive-demo",
+              "blog/predicting-custom-gestures"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Technical Guide",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Getting Started",
+            "pages": ["guide/quickstart", "guide/installation"]
+          },
+          {
+            "group": "Implementation",
             "pages": [
-              "api-reference/introduction"
+              "guide/hand-landmarker",
+              "guide/gesture-recognition",
+              "guide/app-components",
+              "guide/offline-support"
             ]
           },
           {
-            "group": "Endpoint examples",
-            "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
-            ]
+            "group": "ML Model",
+            "pages": ["guide/model-maker", "guide/custom-gestures"]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

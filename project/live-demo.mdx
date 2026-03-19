@@ -1,0 +1,76 @@
+---
+title: "Live Demo"
+description: "Try the ATM Playground in your browser — a touchless gesture-driven ATM simulation powered by MediaPipe Hand Landmarker."
+---
+
+## Try It Now
+
+The demo runs entirely in your browser with no installation required.
+
+<CardGroup cols={2}>
+  <Card title="Live Demo" icon="rocket" href="https://atm-playground.netlify.app">
+    Open the ATM Playground on Netlify. Requires a webcam.
+  </Card>
+  <Card title="CodeSandbox Template" icon="code" href="https://codesandbox.io/p/sandbox/quizzical-neco-svhglk">
+    Fork and explore the source in CodeSandbox.
+  </Card>
+</CardGroup>
+
+<Note>
+  **GDPR Compliant**: All video data is processed entirely on the client side. Inference is performed locally in the browser — no video frames or personal data are ever transmitted to a server.
+</Note>
+
+## System Requirements
+
+- A device with a **functioning webcam** (required for hand detection)
+- A **well-lit environment** for accurate landmark detection
+- A **larger screen** is preferred for the best experience
+- A modern browser with WebAssembly and WebGL support (Chrome or Edge recommended)
+
+## Supported Gestures
+
+The app recognizes four distinct gestures, detected from raw hand landmark data without using the `GestureRecognizer` task:
+
+| Gesture | Hand Pose | Description |
+|---|---|---|
+| **HOVER** 🤚 | Open hand, fingers extended | The base/default state. The tip of the index finger acts as the cursor. Move your hand to navigate. |
+| **CLICK** 👌 | Thumb tip and index finger tip pinched together | Triggers a click on the element currently under the cursor. Euclidean distance between landmarks 4 and 8 must be below 0.25. |
+| **UNDO** ✋ | All five fingers fully extended, wrist below all fingertips | Undoes the last action. Equivalent to pressing the **Backspace** key. |
+| **GRAB** ✊ | All fingers closed into a fist | Opens the information modal overlay. |
+
+<Info>
+  The gesture detection logic supports both **left and right hands**. The app reads the `handednesses` result from MediaPipe to determine which hand is in frame and applies the appropriate detection logic for each.
+</Info>
+
+## How to Use the Demo
+
+<Steps>
+  <Step title="Allow Webcam Access">
+    When prompted by the browser, grant camera permission. The app will begin streaming your webcam feed and loading the MediaPipe Hand Landmarker model.
+  </Step>
+  <Step title="Hold Your Hand Up">
+    Position your hand clearly in front of the camera in a well-lit area. The app will display a semi-transparent overlay showing detected landmarks and connectors drawn on your hand.
+  </Step>
+  <Step title="Use HOVER to Navigate">
+    Extend your fingers in an open-hand pose. Your index finger tip acts as the cursor. Move your hand to position the cursor over ATM buttons.
+  </Step>
+  <Step title="Use CLICK to Interact">
+    Pinch your thumb and index finger together (OK gesture) to click the button under the cursor.
+  </Step>
+  <Step title="Use UNDO to Correct">
+    Spread all five fingers fully and hold your hand high (wrist below fingertips) to undo your last input. You can also press the **Backspace** key as an alternative.
+  </Step>
+  <Step title="Use GRAB for Info">
+    Close your hand into a fist to open the information modal.
+  </Step>
+</Steps>
+
+## Built With
+
+- [React](https://react.dev/) — UI framework
+- [Tailwind CSS](https://tailwindcss.com/) — Styling
+- [MediaPipe Hand Landmarker](https://developers.google.com/mediapipe/api/solutions/js/tasks-vision.handlandmarker) — 21-landmark hand detection
+- [Redux](https://redux.js.org/) + [React Redux](https://react-redux.js.org/) — State management
+- [React Toastify](https://github.com/fkhadra/react-toastify/) — User notifications
+- [React Confetti](https://github.com/alampros/react-confetti/) — Visual celebration effect
+- [Workbox](https://developer.chrome.com/docs/workbox/) — Offline service worker support

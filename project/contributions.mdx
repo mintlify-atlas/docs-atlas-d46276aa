@@ -1,0 +1,71 @@
+---
+title: "GSoC Contributions"
+description: "All pull requests and contributions made to googlesamples/mediapipe during Google Summer of Code 2023."
+---
+
+Throughout the summer, multiple contributions were made to [googlesamples/mediapipe](https://github.com/googlesamples/mediapipe). Commits were rebased and consolidated into pull requests for a clean contribution history.
+
+<CardGroup cols={2}>
+  <Card title="PR #209 — ATM Playground" icon="code-pull-request" href="https://github.com/googlesamples/mediapipe/pull/209">
+    MediaPipe Interactive Web Demo — Contactless ATM Playground
+  </Card>
+  <Card title="PR #215 — Offline Support" icon="wifi" href="https://github.com/googlesamples/mediapipe/pull/215">
+    Adding Offline Support for Interactive Web Demo
+  </Card>
+</CardGroup>
+
+---
+
+## PR #209 — Contactless ATM Playground
+
+**Type**: `app` &nbsp;·&nbsp; **Status**: Merged &nbsp;·&nbsp; [View on GitHub](https://github.com/googlesamples/mediapipe/pull/209)
+
+This pull request delivered the core interactive web demo.
+
+- Developed the interactive [web demo](https://atm-playground.netlify.app) utilizing MediaPipe's [Tasks Vision](https://www.npmjs.com/package/@mediapipe/tasks-vision) API
+- Created components, logic, and styles following React's modular architecture
+- Implemented [gesture recognition](https://github.com/googlesamples/mediapipe/blob/2948bbc6fd78e3b3a15ef9d9b758279197dc5154/tutorials/atm_playground/src/components/Kernel.jsx#L128-L180) using hand landmarks for user interaction
+- Engineered [custom gesture detection logic](https://github.com/googlesamples/mediapipe/blob/2948bbc6fd78e3b3a15ef9d9b758279197dc5154/tutorials/atm_playground/src/utils/allGesture.js#L34-L42) without using the `GestureRecognizer` task — built directly from raw landmark data
+- Added support for both left and right hands via the `HandLandmarker` task
+- Wrote custom components and created different pages for the app
+- Integrated React [Redux](https://github.com/googlesamples/mediapipe/tree/main/tutorials/atm_playground/src/redux) for state management and UI updates
+- Utilized [React Toastify](https://github.com/googlesamples/mediapipe/blob/2948bbc6fd78e3b3a15ef9d9b758279197dc5154/tutorials/atm_playground/src/components/DashboardUI.jsx#L22-L23) for displaying user notifications
+- Handcrafted UI assets using Figma, Adobe Photoshop, Illustrator, and After Effects
+- Fixed bugs, removed redundant code, and optimized imports for better performance
+- Documented the app tutorial in a [blog post](https://blog.neilblaze.live/interactive-web-demo/)
+- Deployed the web demo on Netlify and exported as a [CodeSandbox template](https://codesandbox.io/p/sandbox/quizzical-neco-svhglk)
+
+---
+
+## PR #215 — Offline Support
+
+**Type**: `feat` &nbsp;·&nbsp; **Status**: Merged &nbsp;·&nbsp; [View on GitHub](https://github.com/googlesamples/mediapipe/pull/215)
+
+This pull request enhanced the demo with offline capability and service worker support.
+
+- Worked with [Workbox](https://developer.chrome.com/docs/workbox/) to add offline support via a service worker
+- Implemented [`stale-while-revalidate`](https://developer.chrome.com/docs/workbox/caching-strategies-overview/#stale-while-revalidate) logic to dynamically update cached content upon service worker activation
+- Provided an option to unregister the service worker for troubleshooting or maintenance
+- Fixed minor UI bugs and refactored code
+- Updated the project `README` with comprehensive instructions and a usage guide
+
+---
+
+## WIP — Formatting & Asset Optimization
+
+**Type**: `style` &nbsp;·&nbsp; **Status**: Work in Progress
+
+An ongoing effort focused on code formatting consistency and further optimization of bundled assets.
+
+---
+
+## Blog Posts
+
+Alongside the code contributions, four blog posts were written to document the journey and share knowledge with the wider developer community:
+
+| # | Title | Description |
+|---|---|---|
+| 1 | [Interactive Web Demo](https://blog.neilblaze.live/interactive-web-demo/) | Step-by-step guide to building the touchless interactive web demo |
+| 2 | [Predicting Custom Gestures for Interactive Web Demo](https://blog.neilblaze.live/predicting-custom-gestures-for-interactive-web-demo/) | How to predict custom gestures from raw landmark data |
+| 3 | [A Holistic Preview of MediaPipe](https://blog.neilblaze.live/a-holistic-preview-of-mediapipe/) | A comprehensive look into MediaPipe's capabilities and potential |
+| 4 | [GSoC '23 Community Bonding Period](https://blog.neilblaze.live/gsoc'23-community-bonding-period) | Insights into community bonding during GSoC 2023 preparations |

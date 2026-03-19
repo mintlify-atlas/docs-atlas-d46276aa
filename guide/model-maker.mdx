@@ -1,0 +1,187 @@
+---
+title: "MediaPipe Model Maker"
+description: "Using MediaPipe Model Maker to train custom gesture classifiers."
+---
+
+The ATM Playground ships with four gestures (HOVER, CLICK, UNDO, GRAB) detected by hand-crafted landmark geometry rules. If you need gestures that cannot be expressed through simple landmark comparisons — or want higher accuracy on domain-specific gestures — MediaPipe **Model Maker** lets you train a custom `GestureRecognizer` model from your own image dataset.
+
+---
+
+## What is Model Maker?
+
+MediaPipe Model Maker is a transfer-learning toolkit that fine-tunes existing MediaPipe models on custom datasets. For gesture recognition, it takes a folder of hand images organized by class label, runs the built-in hand landmark detector to extract features, and trains a lightweight classifier head on top.
+
+The output is a `.task` file that you can drop into any MediaPipe `GestureRecognizer` Task.
+
+Official docs: [developers.google.com/mediapipe/solutions/model_maker](https://developers.google.com/mediapipe/solutions/model_maker)
+
+---
+
+## When to use Model Maker
+
+Use Model Maker when:
+
+- You need a gesture the built-in `allGesture.js` logic cannot reliably detect through simple landmark comparisons.
+- You want to add domain-specific gestures unique to your deployment context.
+- You have a dataset of hand images (or can collect one) for the gestures you want.
+
+<Note>
+  The repository includes a ready-to-use Jupyter notebook and a sample dataset directory:
+
+  - **Notebook:** `MP Model Maker (Gesture Recognizer)/MP_ModelMaker__CustomGestureClassifier.ipynb`
+  - **Dataset directory:** `MP Model Maker (Gesture Recognizer)/dataset/`
+  - **Exported model:** `MP Model Maker (Gesture Recognizer)/exported_model/`
+
+  Open the notebook in [Google Colab](https://colab.research.google.com/) for a GPU-backed training environment.
+</Note>
+
+---
+
+## Dataset structure
+
+Model Maker requires the dataset to be organized with one subdirectory per gesture class:
+
+```
+dataset/
+├── none/          ← Required: images of non-gesture / neutral hand positions
+├── hover/         ← Images of the HOVER gesture
+├── click/         ← Images of the CLICK gesture
+├── grab/          ← Images of the GRAB gesture
+└── backspace/     ← Images of the BACKSPACE gesture
+```
+
+Format: `<dataset_path>/<label_name>/<img_name>.*`
+
+<Warning>
+  The `none` label is **mandatory**. It represents any hand shape that should not trigger a gesture. Without it, the model cannot express "no gesture detected" and will always force a classification.
+</Warning>
+
+Recommended dataset size: at least 100 images per class, captured under varied lighting conditions and camera distances.
+
+---
+
+## Training workflow
+
+The four-step workflow from the notebook:
+
+<Steps>
+  <Step title="Install dependencies and import libraries">
+    ```python
+    !pip install --upgrade pip
+    !pip install mediapipe-model-maker
+    ```
+
+    ```python
+    import os
+    import tensorflow as tf
+    from mediapipe_model_maker import gesture_recognizer
+    import matplotlib.pyplot as plt
+    ```
+  </Step>
+
+  <Step title="Load and inspect the dataset">
+    Point Model Maker at the dataset directory. It runs the pre-packaged hand detection model to extract landmark features from each image. Images without a detected hand are automatically omitted.
+
+    ```python
+    dataset_path = "dataset"  # Path to your organized image folder
+
+    # Verify labels
+    labels = []
+    for i in os.listdir(dataset_path):
+        if os.path.isdir(os.path.join(dataset_path, i)):
+            labels.append(i)
+    print(labels)  # Should include 'none' plus your gesture names
+    ```
+
+    Visualize sample images per class:
+
+    ```python
+    NUM_EXAMPLES = 4
+
+    for label in labels:
+        label_dir = os.path.join(dataset_path, label)
+        example_filenames = os.listdir(label_dir)[:NUM_EXAMPLES]
+        fig, axs = plt.subplots(1, NUM_EXAMPLES, figsize=(10, 2))
+        for i in range(NUM_EXAMPLES):
+            axs[i].imshow(plt.imread(os.path.join(label_dir, example_filenames[i])))
+            axs[i].get_xaxis().set_visible(False)
+            axs[i].get_yaxis().set_visible(False)
+        fig.suptitle(f'Showing {NUM_EXAMPLES} examples for {label}')
+    plt.show()
+    ```
+  </Step>
+
+  <Step title="Train the model">
+    Load the dataset, split it into train/validation/test sets, then call `GestureRecognizer.create()`:
+
+    ```python
+    data = gesture_recognizer.Dataset.from_folder(
+        dirname=dataset_path,
+        hparams=gesture_recognizer.HandDataPreprocessingParams()
+    )
+    train_data, rest_data = data.split(0.8)
+    validation_data, test_data = rest_data.split(0.5)
+
+    hparams = gesture_recognizer.HParams(export_dir="exported_model")
+    options = gesture_recognizer.GestureRecognizerOptions(hparams=hparams)
+
+    model = gesture_recognizer.GestureRecognizer.create(
+        train_data=train_data,
+        validation_data=validation_data,
+        options=options
+    )
+    ```
+  </Step>
+
+  <Step title="Evaluate, export, and download">
+    Evaluate accuracy on the held-out test split:
+
+    ```python
+    loss, acc = model.evaluate(test_data, batch_size=1)
+    print(f"Test loss: {loss}, Test accuracy: {acc}")
+    ```
+
+    Export the trained model:
+
+    ```python
+    model.export_model()
+    # Output: exported_model/gesture_recognizer.task
+    ```
+
+    Download the exported `.task` file from Colab:
+
+    ```python
+    from google.colab import files
+    files.download('exported_model/gesture_recognizer.task')
+    ```
+  </Step>
+</Steps>
+
+---
+
+## Output
+
+After training, `exported_model/gesture_recognizer.task` is a self-contained model file that includes:
+
+- The hand landmark detector
+- Your custom gesture classifier head
+- Label map (the folder names from your dataset)
+
+This file is used by the `GestureRecognizer` Task — not `HandLandmarker`. If you want to integrate the trained model into the ATM Playground, see [Custom Gesture Integration](/guide/custom-gestures).
+
+---
+
+## Hyperparameters
+
+<Accordion title="Available HParams options">
+  The `gesture_recognizer.HParams` class accepts the following key parameters:
+
+  | Parameter | Default | Description |
+  |-----------|---------|-------------|
+  | `export_dir` | `'exported_model'` | Directory where the `.task` file is saved |
+  | `learning_rate` | `0.001` | Initial learning rate |
+  | `batch_size` | `2` | Training batch size |
+  | `epochs` | `10` | Number of training epochs |
+
+  Refer to the [official Model Maker docs](https://developers.google.com/mediapipe/solutions/model_maker) for the full parameter list.
+</Accordion>

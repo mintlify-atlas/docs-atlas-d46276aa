@@ -1,97 +1,74 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "GSoC '23 — MediaPipe ATM Playground"
+description: "Pratyay Banerjee's Google Summer of Code 2023 journey with TensorFlow — building a touchless ATM web demo powered by MediaPipe Hand Landmarker."
 ---
 
-## Setting up
+## Welcome
 
-Get your documentation site up and running in minutes.
+This is the journey book for Pratyay Banerjee's **Google Summer of Code 2023** project with [TensorFlow](https://www.tensorflow.org), building an **interactive touchless ATM demo** powered by MediaPipe's Hand Landmarker.
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+The project enables users to interact with an ATM interface entirely through **hand gestures** — no physical touch required. Four gestures (HOVER, CLICK, UNDO, GRAB) control a full ATM transaction flow, all computed client-side in the browser using the `@mediapipe/tasks-vision` library.
 
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Introduction" icon="hand-wave" href="/introduction">
+    Learn about the project background, goals, and GSoC context.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="GSoC Overview" icon="sun" href="/gsoc-overview">
+    Understand Google Summer of Code 2023 and the TensorFlow org.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Architecture" icon="diagram-project" href="/project/architecture">
+    Explore the app architecture, component tree, and data flow.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Live Demo" icon="play" href="/project/live-demo">
+    Try the interactive ATM Playground live in your browser.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## Quick start
 
-Everything you need to create world-class documentation.
+Get the demo running locally in under five minutes.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/guide/quickstart">
+    Clone, install, and run the ATM Playground on your machine.
   </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
+  <Card title="Installation" icon="download" href="/guide/installation">
+    Detailed setup with Docker, CodeSandbox, and local Node.js options.
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+</CardGroup>
 
-## Need inspiration?
+## Technical deep-dives
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<CardGroup cols={2}>
+  <Card title="Hand Landmarker" icon="hand" href="/guide/hand-landmarker">
+    How MediaPipe detects 21 hand landmarks in real time.
+  </Card>
+  <Card title="Gesture Recognition" icon="wand-magic-sparkles" href="/guide/gesture-recognition">
+    Custom gesture logic — HOVER, CLICK, UNDO, GRAB — without GestureRecognizer.
+  </Card>
+  <Card title="App Components" icon="puzzle-piece" href="/guide/app-components">
+    React component breakdown: Kernel, CursorTip, DashboardUI, and more.
+  </Card>
+  <Card title="Offline Support" icon="wifi-slash" href="/guide/offline-support">
+    Workbox service worker and stale-while-revalidate PWA caching.
+  </Card>
+</CardGroup>
+
+## Blog
+
+Follow the full GSoC 2023 journey through Pratyay's blog posts.
+
+<CardGroup cols={2}>
+  <Card title="Community Bonding" icon="people-group" href="/blog/community-bonding">
+    Insights from the GSoC 2023 community bonding period.
+  </Card>
+  <Card title="MediaPipe Overview" icon="brain" href="/blog/mediapipe-overview">
+    A holistic preview of MediaPipe's capabilities.
+  </Card>
+  <Card title="Building the Demo" icon="hammer" href="/blog/building-interactive-demo">
+    Step-by-step guide to building the touchless ATM web demo.
+  </Card>
+  <Card title="Custom Gestures" icon="hand-fingers-crossed" href="/blog/predicting-custom-gestures">
+    Training custom gesture classifiers with MediaPipe Model Maker.
+  </Card>
+</CardGroup>

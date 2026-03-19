@@ -1,0 +1,407 @@
+---
+title: "Predicting Custom Gestures"
+description: How to train a custom gesture classifier with MediaPipe Model Maker and integrate it into an interactive web app — from dataset collection to TFLite export.
+---
+
+## Preface
+
+This post is part of the GSoC 2023 series with TensorFlow. It covers how to use **MediaPipe's Model Maker** to build a custom Gesture Recognizer, and how the resulting `.task` file integrates with the ATM Playground web app.
+
+**Related links:**
+
+- [Interactive Web Demos — GSoC project page](https://summerofcode.withgoogle.com/programs/2023/projects/pd9KgnNP)
+- [Community Bonding Period](/blog/community-bonding)
+- [A Holistic Preview of MediaPipe](/blog/mediapipe-overview)
+
+## Motivation
+
+Reports indicate 80% of people find public touchscreens unhygienic. According to SPER Market Research, the Gesture Recognition and Touchless Sensing Market is estimated to reach **USD 138.58 Billion by 2032** (CAGR of 20.76%).
+
+Touchless gesture-based intuitive systems can reduce transmission in public settings and offer a seamless, convenient experience. The goal of this project is to develop an interactive web app that uses simple human gestures to facilitate perfect contactless interactions — targeting ATMs, airports, hotels, retail, and healthcare.
+
+## Why Build a Custom Gesture Recognizer?
+
+While MediaPipe's default `GestureRecognizer` is production-ready and recognizes 7 gestures (👍 👎 ✌️ ☝️ ✊ 👋 🤟), the ATM Playground requires a specific **CLICK gesture ("👌" — index + thumb pinch)** that is **not included** in the base classifier.
+
+To address this, we use **MediaPipe Model Maker** to train our own custom gesture recognizer.
+
+<Info>
+  The full Jupyter notebook used for training is available in the repository at `MP Model Maker (Gesture Recognizer)/MP_ModelMaker__CustomGestureClassifier.ipynb`. You can also open it directly in [Google Colab](https://colab.research.google.com/drive/18747Ic2KLHmIvnme29nNd16mvlDSgA0D).
+</Info>
+
+## What is MediaPipe Model Maker?
+
+MediaPipe Model Maker is a tool for customizing MediaPipe's pre-trained models with your own data. For gesture recognition, it allows you to:
+
+1. Provide a dataset of hand gesture images organized into labeled folders
+2. Automatically extract hand landmarks using MediaPipe Hands (images without detected hands are omitted)
+3. Train a lightweight gesture classification head on top of the landmark embeddings
+4. Export a `.task` file ready to drop into any MediaPipe Tasks application
+
+<Note>
+  Model Maker works on top of the existing MediaPipe gesture recognition pipeline. It only retrains the gesture classification head — not the underlying hand landmark model. This keeps training fast and the output model compact.
+</Note>
+
+## Custom Gesture Classes
+
+For the ATM Playground, the custom dataset contains **8 gesture classes**:
+
+```
+['ok', 'pointUp', 'hovering', 'erase', 'click', 'confirm', 'grab', 'none']
+```
+
+The `none` class contains images of a hand without any specific gesture — critical for teaching the model to distinguish neutral hand positions.
+
+## Tutorial: Building the Custom Gesture Recognizer
+
+### Prerequisites
+
+- A computer with a camera (webcam or USB)
+- A web browser and internet connection
+- A Google account (for Google Colab and Drive)
+- Basic knowledge of Python (v3.7+)
+
+<Steps>
+  <Step title="Setup — Install dependencies in Colab">
+    Open the [Google Colab notebook](https://colab.research.google.com/drive/18747Ic2KLHmIvnme29nNd16mvlDSgA0D) and create a copy in your account.
+
+    Install the required packages:
+
+    ```python
+    !pip install --upgrade pip
+    !pip install mediapipe-model-maker
+    ```
+
+    Import the libraries:
+
+    ```python
+    from google.colab import files
+    import os
+    import tensorflow as tf
+    assert tf.__version__.startswith('2')
+
+    from mediapipe_model_maker import gesture_recognizer
+    import matplotlib.pyplot as plt
+    ```
+  </Step>
+
+  <Step title="Collect the dataset">
+    Instead of using the default rock-paper-scissors dataset, we create a **custom dataset from scratch** using [Teachable Machine](https://teachablemachine.withgoogle.com).
+
+    1. Open [Teachable Machine](https://teachablemachine.withgoogle.com/train/image) and create a new image project
+    2. Add your custom gesture classes (e.g., `grab ✊`, `click 👌`, `confirm 🤟`, `none`)
+    3. Record webcam samples for each class — aim for variety in hand angle, lighting, and distance
+    4. Export each class's samples as a `.zip` file
+
+    **Organize the dataset folder structure:**
+
+    ```
+    alpha_data_sample/
+    ├── click/
+    │   ├── 1.jpg
+    │   ├── 2.jpg
+    │   └── ...
+    ├── grab/
+    ├── confirm/
+    ├── hovering/
+    ├── erase/
+    ├── ok/
+    ├── pointUp/
+    └── none/
+    ```
+
+    Upload the parent folder as a `.zip` to your Google Drive.
+
+    <Tip>
+      In the `none` folder, add images of your hand in a neutral position without any specific gesture. This helps the model learn to distinguish between active gestures and background hand positions.
+    </Tip>
+
+    <Tip>
+      If Teachable Machine exports images numbered sequentially (0.jpg, 1.jpg, ...), there may be filename collisions when merging class folders. Use this Python utility to rename them:
+
+      ```python
+      import os
+
+      folder_path = r'<FILE_PATH>'
+      file_extension = '.jpg'
+      start_number = 1
+      file_list = os.listdir(folder_path)
+
+      for i, filename in enumerate(file_list):
+          new_filename = str(i + start_number) + file_extension
+          old_filepath = os.path.join(folder_path, filename)
+          new_filepath = os.path.join(folder_path, new_filename)
+          os.rename(old_filepath, new_filepath)
+
+      print("File renaming complete.")
+      ```
+    </Tip>
+  </Step>
+
+  <Step title="Import the dataset from Google Drive">
+    Mount Google Drive in Colab and unzip the dataset:
+
+    ```python
+    from google.colab import drive
+    drive.mount('/content/gdrive')
+    ```
+
+    After authorizing your Google account:
+
+    ```bash
+    # Replace <PATH> with your actual Drive path to the zip file
+    !unzip gdrive/My\ Drive/<PATH>/alpha_data_sample.zip
+    dataset_path = "alpha_data_sample"
+    ```
+  </Step>
+
+  <Step title="Verify the dataset labels">
+    Print the labels to confirm all 8 classes are present:
+
+    ```python
+    print(dataset_path)
+    labels = []
+    for i in os.listdir(dataset_path):
+        if os.path.isdir(os.path.join(dataset_path, i)):
+            labels.append(i)
+    print(labels)
+    ```
+
+    Expected output:
+
+    ```
+    alpha_data_sample
+    ['ok', 'pointUp', 'hovering', 'erase', 'click', 'confirm', 'grab', 'none']
+    ```
+  </Step>
+
+  <Step title="Visualize dataset samples">
+    Plot example images for each gesture class to visually inspect the data quality:
+
+    ```python
+    NUM_EXAMPLES = 4  # Customizable
+
+    for label in labels:
+        label_dir = os.path.join(dataset_path, label)
+        example_filenames = os.listdir(label_dir)[:NUM_EXAMPLES]
+        fig, axs = plt.subplots(1, NUM_EXAMPLES, figsize=(10, 2))
+        for i in range(NUM_EXAMPLES):
+            axs[i].imshow(plt.imread(os.path.join(label_dir, example_filenames[i])))
+            axs[i].get_xaxis().set_visible(False)
+            axs[i].get_yaxis().set_visible(False)
+        fig.suptitle(f'Showing {NUM_EXAMPLES} examples for {label}')
+
+    plt.show()
+    ```
+
+    <Tip>
+      Samples captured under low-light conditions are useful for stress-testing, but for best accuracy, record primary training samples under adequate lighting.
+    </Tip>
+  </Step>
+
+  <Step title="Load and split the dataset">
+    Load the dataset using `Dataset.from_folder`. MediaPipe Hands runs automatically to extract landmarks from each image. Images without detectable hands are omitted.
+
+    Split: **80% training**, **10% validation**, **10% testing**.
+
+    ```python
+    data = gesture_recognizer.Dataset.from_folder(
+        dirname=dataset_path,
+        hparams=gesture_recognizer.HandDataPreprocessingParams()
+    )
+    train_data, rest_data = data.split(0.8)
+    validation_data, test_data = rest_data.split(0.5)
+    ```
+
+    `HandDataPreprocessingParams` has two configurable options:
+    - **`shuffle`** — Whether to shuffle the dataset (default: `True`)
+    - **`min_detection_confidence`** — Confidence threshold for hand detection (0–1)
+  </Step>
+
+  <Step title="Train the model">
+    Train the custom gesture recognizer using `GestureRecognizer.create`:
+
+    ```python
+    hparams = gesture_recognizer.HParams(export_dir="exported_model")
+    options = gesture_recognizer.GestureRecognizerOptions(hparams=hparams)
+    model = gesture_recognizer.GestureRecognizer.create(
+        train_data=train_data,
+        validation_data=validation_data,
+        options=options
+    )
+    ```
+
+    The model architecture is a lightweight classification head:
+
+    ```
+    Model: "model_5"
+    Layer (type)                Output Shape    Param #
+    ─────────────────────────────────────────────────────
+    hand_embedding (InputLayer) [(None, 128)]   0
+    batch_normalization         (None, 128)     512
+    re_lu (ReLU)                (None, 128)     0
+    dropout (Dropout)           (None, 128)     0
+    output (Dense)              (None, 8)       1032
+    ─────────────────────────────────────────────────────
+    Total params: 1,544  |  Trainable: 1,288  |  Non-trainable: 256
+    ```
+
+    Training runs for 10 epochs with learning rate decay. Sample output:
+
+    ```
+    Epoch 1/10  - loss: 0.2332 - accuracy: 0.7647 - val_accuracy: 0.8333
+    Epoch 7/10  - loss: 0.2244 - accuracy: 0.7875 - val_accuracy: 0.8542
+    Epoch 10/10 - loss: 0.2253 - accuracy: 0.7725 - val_accuracy: 0.8385
+    ```
+  </Step>
+
+  <Step title="Evaluate model performance">
+    Evaluate the trained model on the held-out test set:
+
+    ```python
+    loss, acc = model.evaluate(test_data, batch_size=1)
+    print(f"Test loss:{loss}, Test accuracy:{acc}")
+    ```
+
+    Expected result:
+
+    ```
+    Test loss: 0.2387, Test accuracy: 0.8281
+    ```
+  </Step>
+
+  <Step title="Export to TFLite .task file">
+    Convert and export the model to a TFLite `.task` file for use in the web app:
+
+    ```python
+    model.export_model()
+    ```
+
+    Output:
+
+    ```
+    Using existing files at /tmp/model_maker/gesture_recognizer/gesture_embedder.tflite
+    Using existing files at /tmp/model_maker/gesture_recognizer/palm_detection_full.tflite
+    Using existing files at /tmp/model_maker/gesture_recognizer/hand_landmark_full.tflite
+    Using existing files at /tmp/model_maker/gesture_recognizer/canned_gesture_classifier.tflite
+    ```
+
+    Download the exported file:
+
+    ```python
+    !ls exported_model
+    files.download('exported_model/gesture_recognizer.task')
+    ```
+
+    The exported `.task` file used in the ATM Playground is hosted at:
+    `https://res.cloudinary.com/dutfy6mlc/raw/upload/v1687812204/gesture_recognizer.task`
+  </Step>
+
+  <Step title="Test in MediaPipe Studio">
+    Visit [MediaPipe Studio Gesture Recognition](https://mediapipe-studio.webapps.google.com/demo/gesture_recognizer) and upload your `.task` file to test it.
+
+    Recommended settings for best results:
+
+    | Setting | Value |
+    |---------|-------|
+    | Inference Delegate | **GPU Inference** (faster) |
+    | Input Source | **Camera** |
+    | Model Selection | Upload your `.task` file |
+    | Num Hands | **1** |
+    | Hand Detection Confidence | **50%** |
+    | Hand Presence Confidence | **50%** |
+    | Landmark Presence Confidence | **50%** |
+  </Step>
+</Steps>
+
+## Integrating the Custom Model into the Web App
+
+Once the `.task` file is ready, integrate it by updating the `modelAssetPath` in the `GestureRecognizer.createFromOptions` call:
+
+```javascript
+GestureRecognizer.createFromOptions(vision, {
+  baseOptions: {
+    // Replace with your hosted .task file URL
+    modelAssetPath:
+      "https://res.cloudinary.com/dutfy6mlc/raw/upload/v1687812204/gesture_recognizer.task",
+    delegate: "GPU",
+  },
+  runningMode: runningMode,
+});
+```
+
+<Note>
+  In the final ATM Playground implementation, the `HandLandmarker` task was used instead of `GestureRecognizer` to reduce inference time. Custom gesture classification was implemented directly from landmark coordinates in `allGesture.js`. See the [Building the Interactive Demo](/blog/building-interactive-demo) post for the full landmark-based gesture logic.
+</Note>
+
+## Optional: Hyperparameter Tuning
+
+Customize training using `GestureRecognizerOptions`:
+
+<Accordion title="ModelOptions parameters">
+  | Parameter | Description | Default |
+  |-----------|-------------|---------|
+  | `dropout_rate` | Fraction of input units to drop in the dropout layer | `0.05` |
+  | `layer_widths` | Hidden layer widths. Each element adds a new hidden layer with BatchNorm, Dropout, and ReLU. | `[]` (no hidden layers) |
+</Accordion>
+
+<Accordion title="HParams parameters (affect accuracy)">
+  | Parameter | Description | Default |
+  |-----------|-------------|---------|
+  | `learning_rate` | Learning rate for gradient descent | `0.001` |
+  | `batch_size` | Batch size for training | `2` |
+  | `epochs` | Number of training iterations over the dataset | `10` |
+  | `steps_per_epoch` | Training steps per epoch (auto-calculated if not set) | `None` |
+  | `shuffle` | Whether to shuffle the dataset before training | `False` |
+  | `lr_decay` | Learning rate decay per epoch | `0.99` |
+  | `gamma` | Gamma parameter for focal loss | `2` |
+</Accordion>
+
+<Accordion title="HParams parameters (do not affect accuracy)">
+  | Parameter | Description |
+  |-----------|-------------|
+  | `export_dir` | Location for model checkpoint files and exported model files |
+</Accordion>
+
+Example: train with higher `dropout_rate` and `learning_rate`:
+
+```python
+hparams = gesture_recognizer.HParams(
+    learning_rate=0.003,
+    export_dir="exported_model_2"
+)
+model_options = gesture_recognizer.ModelOptions(dropout_rate=0.2)
+options = gesture_recognizer.GestureRecognizerOptions(
+    model_options=model_options,
+    hparams=hparams
+)
+model_2 = gesture_recognizer.GestureRecognizer.create(
+    train_data=train_data,
+    validation_data=validation_data,
+    options=options
+)
+```
+
+Evaluate the new model:
+
+```python
+loss, accuracy = model_2.evaluate(test_data)
+print(f"Test loss:{loss}, Test accuracy:{accuracy}")
+```
+
+## Related Guides
+
+<CardGroup cols={2}>
+  <Card title="Model Maker Guide" icon="flask" href="/guide/model-maker">
+    Full reference for MediaPipe Model Maker: supported tasks, configuration options, and best practices for dataset preparation.
+  </Card>
+  <Card title="Custom Gestures Integration" icon="hand" href="/guide/custom-gestures">
+    How to load a custom `.task` file in your web app and map gesture outputs to UI actions.
+  </Card>
+</CardGroup>
+
+## Conclusion
+
+MediaPipe Model Maker makes it straightforward to extend the default gesture recognizer with custom classes. The workflow — collect images, extract landmarks, train a classification head, export to TFLite — takes under an hour end-to-end in Google Colab.
+
+The resulting `.task` file slots directly into any MediaPipe Tasks web application, enabling tailored touchless interactions specific to your use case.

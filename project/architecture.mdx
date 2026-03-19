@@ -1,0 +1,147 @@
+---
+title: "Architecture Overview"
+description: "Component hierarchy, MediaPipe integration flow, Redux store shape, and data flow for the ATM Playground app."
+---
+
+## Tech Stack
+
+The ATM Playground is a client-side React application. There is no backend — all inference runs in the browser.
+
+| Layer | Technology |
+|---|---|
+| UI Framework | [React](https://react.dev/) |
+| Styling | [Tailwind CSS](https://tailwindcss.com/) |
+| State Management | [Redux](https://redux.js.org/) + [React Redux](https://react-redux.js.org/) |
+| ML Inference | [MediaPipe Hand Landmarker](https://developers.google.com/mediapipe/api/solutions/js/tasks-vision.handlandmarker) (`@mediapipe/tasks-vision`) |
+| Notifications | [React Toastify](https://github.com/fkhadra/react-toastify/) |
+| Offline Support | [Workbox](https://developer.chrome.com/docs/workbox/) service worker |
+| Deployment | [Netlify](https://www.netlify.com/) |
+
+## Folder Structure
+
+```
+Interactive Demo/
+├── public/
+│   └── hand_landmarker.task      # Bundled MediaPipe model asset
+├── src/
+│   ├── App.jsx                   # Root component
+│   ├── index.jsx                 # Entry point
+│   ├── index.css
+│   ├── components/
+│   │   ├── Kernel.jsx            # MediaPipe inference engine
+│   │   ├── Landing.jsx           # Landing / splash page
+│   │   ├── DashboardUI.jsx       # ATM dashboard UI
+│   │   └── CustComponents/
+│   │       ├── CursorTip.jsx     # Gesture-driven cursor overlay
+│   │       ├── UIalert.jsx       # Toast alert wrapper
+│   │       ├── CombinedCard.jsx  # Reusable card component
+│   │       ├── ModalC1.jsx       # Info modal (triggered by GRAB)
+│   │       └── TimeComponent.jsx # Clock display
+│   ├── redux/
+│   │   ├── store.js              # Redux store configuration
+│   │   ├── root.handler.js       # Root reducer
+│   │   └── gesture/
+│   │       ├── gesture.forms.js  # Action type constants
+│   │       ├── gesture.ops.js    # Action creators
+│   │       └── gesture.handler.js # Reducer
+│   ├── utils/
+│   │   └── allGesture.js         # Gesture detection logic
+│   ├── service-worker.js
+│   └── serviceWorkerRegistration.js
+├── package.json
+├── tailwind.config.js
+├── postcss.config.js
+└── Dockerfile
+```
+
+## Component Hierarchy
+
+```
+App.jsx
+├── Kernel.jsx          ← MediaPipe inference, canvas overlay
+├── CursorTip.jsx       ← Cursor rendered at index finger tip position
+├── UIalert.jsx         ← Toast notification display
+└── Landing.jsx
+    └── DashboardUI.jsx ← ATM transaction panel
+        ├── CombinedCard.jsx
+        ├── TimeComponent.jsx
+        └── ModalC1.jsx
+```
+
+`App.jsx` is the root component. It renders all top-level children in a full-screen `div`. `Kernel.jsx` runs independently as an always-on inference loop that writes gesture and finger position data into the Redux store. All other components read from the store and react to those state changes.
+
+## Redux Store Shape
+
+The entire application state is held in a single Redux slice managed by `gesture.handler.js`:
+
+```js
+{
+  gesture: null,        // Current detected gesture string: "HOVER" | "CLICK" | "BACKSPACE" | "GRAB" | null
+  finger_locx: null,   // Array of 21 landmark objects from HandLandmarker (x, y, z coordinates)
+  loaded: false         // Boolean: true once the HandLandmarker model has initialized
+}
+```
+
+Action creators in `gesture.ops.js` dispatch to these three fields:
+
+| Action Creator | Action Type | Effect |
+|---|---|---|
+| `putGesture(gesture)` | `GEST_ASSIGN` | Updates the current gesture string |
+| `putFingLock(locs)` | `FINLOCK_ASSIGN` | Updates landmark positions for cursor tracking |
+| `putInitialze()` | `INIT_ASSIGN` | Sets `loaded: true` once the model is ready |
+
+## MediaPipe Integration
+
+`Kernel.jsx` is the brain of the app. It uses `@mediapipe/tasks-vision` to load the Hand Landmarker model and run continuous inference on the webcam feed.
+
+Key configuration:
+
+```js
+handLandmarker = await HandLandmarker.createFromOptions(vision, {
+  baseOptions: {
+    modelAssetPath: '/hand_landmarker.task',  // loaded from public/ for speed
+    delegate: 'GPU',
+  },
+  runningMode: 'IMAGE' || 'VIDEO',
+  numHands: 1,
+  minHandDetectionConfidence: 0.6,
+  minHandPresenceConfidence: 0.6,
+});
+```
+
+The model asset is loaded from the local `public/` directory first for performance. If that fails, it falls back to the CDN.
+
+Both left and right hands are supported. The app reads the `handednesses` field from the MediaPipe result to determine which hand is in frame, then calls the appropriate gesture function (`rightHandGestures` or `leftHandGestures`) from `utils/allGesture.js`.
+
+## Data Flow
+
+<Steps>
+  <Step title="Webcam Access">
+    `Kernel.jsx` requests webcam access via `navigator.mediaDevices.getUserMedia`. The video stream is attached to a dynamically created `<video>` element (never shown in the DOM).
+  </Step>
+  <Step title="Frame Capture & Inference">
+    On each animation frame (`requestAnimationFrame`), `handLandmarker.detect(videoElement)` is called. MediaPipe returns an array of **21 normalized landmark coordinates** (`x`, `y`, `z`) for the detected hand.
+  </Step>
+  <Step title="Hand Classification">
+    The `handednesses` result determines whether the detected hand is left or right. The landmark array is passed to either `rightHandGestures()` or `leftHandGestures()` in `utils/allGesture.js`.
+  </Step>
+  <Step title="Gesture Detection">
+    The gesture function evaluates landmark positions using Euclidean distance and relative coordinate comparisons across all five fingers to classify the pose as one of: `HOVER`, `CLICK`, `BACKSPACE`, or `GRAB`.
+  </Step>
+  <Step title="Redux Dispatch">
+    The detected gesture string is dispatched via `putGesture()`, and the raw landmark array is dispatched via `putFingLock()`. This updates the Redux store atomically on every frame.
+  </Step>
+  <Step title="UI Update">
+    React components subscribed to the Redux store — including `CursorTip.jsx` (cursor position), `DashboardUI.jsx` (button interactions), and `ModalC1.jsx` (info modal) — re-render in response to the new state.
+  </Step>
+</Steps>
+
+## Canvas Overlay
+
+`Kernel.jsx` also renders a `<canvas>` element that overlays the full viewport. On each frame, it draws:
+
+- The mirrored webcam video feed (low opacity, grayscale)
+- White connector lines between the 21 hand landmarks following the standard MediaPipe hand skeleton
+- Teal-colored filled circles at each of the 21 landmark positions
+
+This gives visual feedback to the user about what the model is detecting.

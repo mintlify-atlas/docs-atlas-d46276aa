@@ -1,0 +1,284 @@
+---
+title: "A Holistic Preview of MediaPipe"
+description: Comprehensive overview of MediaPipe's capabilities, Solutions suite, and Tasks API — including the Hand Landmarker's 21-point landmark model used in the ATM Playground.
+---
+
+## Preface
+
+This post shares key insights and lessons acquired from working with [MediaPipe](https://developers.google.com/mediapipe) during GSoC 2023. It specifically highlights the advancements brought by the new Solutions suite and Tasks API (Vision).
+
+<Info>
+  For a comprehensive understanding, refer to MediaPipe's official documentation at [https://developers.google.com/mediapipe/solutions/guide](https://developers.google.com/mediapipe/solutions/guide).
+</Info>
+
+**Related links in this series:**
+
+- [GSoC '23 Community Bonding Period](/blog/community-bonding)
+- [Predicting Custom Gestures](/blog/predicting-custom-gestures)
+- [Building the Interactive Web Demo](/blog/building-interactive-demo)
+- [GSoC project page](https://summerofcode.withgoogle.com/programs/2023/projects/pd9KgnNP)
+
+## Introduction to MediaPipe
+
+Many ML applications depend on baseline perception tasks. For instance, gestural navigation or sign language detection require accurate hand tracking — but developing a reliable hand tracking model is time-consuming and resource-intensive.
+
+**MediaPipe** is Google's answer: a cross-platform pipeline framework for building custom machine learning solutions for live and streaming media, open-sourced by Google.
+
+MediaPipe offers essential ML models for prevalent tasks such as hand tracking, effectively eliminating the development bottleneck faced by numerous ML applications. With user-friendly APIs, it:
+
+- Reduces the overall project timeline for computer vision applications
+- Provides real-time inference with just a few lines of code
+- Supports rapid prototyping of perception pipelines
+
+## What is MediaPipe Used For?
+
+MediaPipe is primarily used for **building real-time multimedia processing pipelines**. It provides tools, libraries, and pre-built components for:
+
+- Video analysis and object detection
+- Facial recognition and hand/pose tracking
+- Gesture recognition
+- Augmented and virtual reality effects
+- Robotics and IoT perception
+
+MediaPipe enables efficient processing and analysis of media streams, making it ideal for real-time applications across mobile, desktop, and the web.
+
+## Advantages of MediaPipe
+
+| Advantage | Description |
+|-----------|-------------|
+| **Easy to use** | Self-serve ML solutions with simple abstractions. Low-code and no-code APIs available. |
+| **Innovative** | Advanced ML solutions crafted with Google ML expertise. |
+| **End-to-end acceleration** | Fast ML inference using CPU & GPU on common hardware. |
+| **Lightweight** | Designed for mobile and edge devices with limited compute resources. |
+| **Cross-Platform** | Build once, deploy on Web, Android, iOS, desktop, edge, cloud, and IoT. |
+| **Ready-to-use** | Prebuilt ML solutions demonstrate the full power of the framework. |
+| **Open source** | Licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0), fully extensible. |
+
+## A Brief History of MediaPipe
+
+MediaPipe has powered ML in many Google products since 2012, initially developed for real-time video and audio analysis on YouTube. It has since been integrated into:
+
+1. **Google Meet** — background blur and effects
+2. **Google Lens** — object detection
+3. **Google Photos** — photo analysis
+4. **Google Home** — smart home perception
+5. **NestCam** — camera perception systems
+
+Despite its sophisticated capabilities, MediaPipe operates with minimal resource requirements — compact and efficient enough to run on low-powered embedded IoT devices.
+
+## MediaPipe Framework
+
+The MediaPipe Toolkit comprises the **Framework** and the **Solutions**. The Framework consists of three main elements:
+
+1. A framework for inference from sensory data (audio or video)
+2. A set of tools for performance evaluation and visualization
+3. Re-usable components for inference and processing (calculators)
+
+### Core Framework Components
+
+<Accordion title="Packet">
+  The basic data flow unit in MediaPipe. It consists of a numeric timestamp and a shared pointer to an immutable payload. Packets flow between nodes along streams.
+</Accordion>
+
+<Accordion title="Graph">
+  Processing takes place inside a Graph, which defines the flow paths of packets between nodes. A graph can have any number of inputs and outputs, and can branch or merge data streams.
+</Accordion>
+
+<Accordion title="Nodes (Calculators)">
+  Nodes are where the bulk of the graph's work takes place. Also called "calculators", they produce or consume packets. Each node's interface defines a number of input and output ports. Every time a graph runs, calculators execute `Open`, `Process`, and `Close` methods.
+</Accordion>
+
+<Accordion title="Streams">
+  A stream is a connection between two nodes that carries a sequence of packets with increasing timestamps, enabling real-time processing.
+</Accordion>
+
+### Calculator Types
+
+All built-in calculators fall into four categories:
+
+1. **Pre-processing calculators** — image and media-processing (e.g., `ImageTransform`, `ImageToTensors`)
+2. **Inference calculators** — native integration with TensorFlow and TensorFlow Lite for ML inference
+3. **Post-processing calculators** — ML post-processing such as detection, segmentation, and classification (e.g., `TensorToLandmark`)
+4. **Utility calculators** — final tasks such as image annotation
+
+### The MediaPipe Graph for Hand Detection
+
+The MediaPipe Hands solution graph feeds a stream of images and outputs hand landmarks rendered on the images. In the graph:
+
+- **Calculators** are represented as rectangular blocks
+- **Streams** are represented as arrows (→)
+- Packets carry video frames between calculators
+
+To visualize any MediaPipe graph, copy and paste the `.pbtxt` protobuf definition into the [MediaPipe Visualizer](https://viz.mediapipe.dev/).
+
+## MediaPipe Solutions
+
+**MediaPipe Solutions** is a versatile framework for creating ML pipelines across platforms. It offers customizable building blocks for applying AI and ML techniques to your requirements, available for Web (JavaScript), Python, and Android (Java).
+
+### Core Libraries
+
+- **MediaPipe Tasks** — Cross-platform APIs and libraries for deploying solutions. [Learn more](https://developers.google.com/mediapipe/solutions/tasks)
+- **MediaPipe Models** — Pre-trained, ready-to-run models for use with each solution
+
+### Customization Tools
+
+- **MediaPipe Model Maker** — Customize models with your own data. [Learn more](https://developers.google.com/mediapipe/solutions/model_maker)
+- **MediaPipe Studio** — Visualize, evaluate, and benchmark solutions in your browser. [Learn more](https://developers.google.com/mediapipe/solutions/studio)
+
+## MediaPipe Tasks API
+
+[MediaPipe Tasks](https://developers.google.com/mediapipe/solutions/tasks) simplifies on-device ML deployment through low-code libraries. Developers can incorporate ML solutions with just a few lines of code — no deep knowledge of model internals required.
+
+Currently, MediaPipe Tasks offers tools across three domains: **vision**, **audio**, and **text**.
+
+Key benefits of the Tasks API:
+
+1. **Versatile and user-friendly** — pre-trained models with comprehensive APIs and data processing tools
+2. **Solves real-world problems** — proven across object detection, audio classification, and sentiment analysis
+3. **Pre-trained models** — a ready repository of models that saves training time and resources
+4. **Seamless integration** — easily combines with other frameworks and APIs
+
+### Web/JavaScript Import
+
+Add the following script tags to enable the Tasks API in web projects:
+
+```html
+<head>
+  <!-- For tasks-vision (hand tracking, gesture recognition, etc.) -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.js"
+    crossorigin="anonymous"
+  ></script>
+
+  <!-- For tasks-text (text classification, etc.) -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-text/text-bundle.js"
+    crossorigin="anonymous"
+  ></script>
+
+  <!-- For tasks-audio (audio classification, etc.) -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio/audio_bundle.js"
+    crossorigin="anonymous"
+  ></script>
+</head>
+```
+
+### Notable Tasks-Vision Classes
+
+| Class | Description |
+|-------|-------------|
+| `DrawingUtils` | Helper class to visualize the result of a MediaPipe Vision task |
+| `FilesetResolver` | Resolves the files required for the MediaPipe Task APIs |
+| `GestureRecognizer` | Performs hand gesture recognition on images |
+| `HandLandmarker` | Performs hand landmark detection on images |
+
+### Notable Tasks-Vision Interfaces
+
+| Interface | Description |
+|-----------|-------------|
+| `BoundingBox` | An integer bounding box, axis aligned |
+| `GestureRecognizerResult` | Results generated by `GestureRecognizer` |
+| `HandLandmarkerResult` | Results generated by `HandLandmarker` |
+| `HandLandmarkerOptions` | Options to configure the HandLandmarker Task |
+| `GestureRecognizerOptions` | Options to configure the Gesture Recognizer Task |
+| `NormalizedLandmark` | A point in 3D space with x, y, z coordinates |
+| `Landmark` | A point in 3D space with x, y, z coordinates |
+
+## Hand Landmarker — 21 Landmark Points
+
+The Hand Landmarker task is central to the ATM Playground project. It detects **21 key points** on each detected hand, enabling real-time understanding of hand shape and finger positions.
+
+These 21 landmarks represent specific anatomical points:
+
+- **0** — Wrist
+- **1–4** — Thumb (CMC, MCP, IP, TIP)
+- **5–8** — Index finger (MCP, PIP, DIP, TIP)
+- **9–12** — Middle finger (MCP, PIP, DIP, TIP)
+- **13–16** — Ring finger (MCP, PIP, DIP, TIP)
+- **17–20** — Pinky finger (MCP, PIP, DIP, TIP)
+
+Each landmark is a `NormalizedLandmark` with `x`, `y`, and `z` coordinates. The `x` and `y` values are normalized to `[0.0, 1.0]` relative to image dimensions. The `z` value represents depth relative to the wrist landmark.
+
+<Note>
+  The ATM Playground uses **landmark 8** (index fingertip) to drive the on-screen cursor position. The `x` coordinate is mirrored (`window.innerWidth - x * window.innerWidth`) to create a natural mirror-like interaction.
+</Note>
+
+The Hand Landmarker uses a two-stage ML model:
+
+1. A **palm detection model** that locates hands within the full image
+2. A **hand landmark model** that precisely localizes the 21 3D keypoints within the detected hand region
+
+This approach enables accurate detection even with partial occlusion and from a single video frame via direct coordinate regression — no temporal smoothing required.
+
+## Initial Tasks Released (December 2022)
+
+In December 2022, Google introduced the MediaPipe Solutions preview with five initial tasks:
+
+<Tabs>
+  <Tab title="Gesture Recognition">
+    Recognizes hand gestures in real time and provides recognized gesture results along with hand landmarks. Use this to invoke application features corresponding to detected gestures.
+
+    Default model recognizes 7 gestures: 👍 👎 ✌️ ☝️ ✊ 👋 🤟
+  </Tab>
+  <Tab title="Hand Landmarker">
+    Detects the 21 landmarks of hands in an image or video. Use this to localize key points of the hands and render visual effects — or to drive custom cursor logic as in the ATM Playground.
+  </Tab>
+  <Tab title="Image Classification">
+    Performs classification of multiple classes of objects within an image or video. Identifies what an image represents among a set of categories defined at training time.
+  </Tab>
+  <Tab title="Object Detection">
+    Detects the presence and location of multiple classes of objects within images or videos. For example, locating dogs or vehicles in an image.
+  </Tab>
+  <Tab title="Text Classification">
+    Classifies text into defined categories, such as positive or negative sentiment. Categories are defined during training.
+  </Tab>
+</Tabs>
+
+## New Tasks Announced at Google I/O 2023
+
+Google I/O 2023 showcased nine new tasks, including:
+
+- **Face Landmarker** — Detects facial landmarks and blendshapes to determine facial expressions (smiling, raised eyebrows, blinking) and apply 3D face effects
+- **Image Segmenter** — Divides images into regions based on predefined categories; enables background blurring and object isolation
+- **Interactive Segmenter** — Takes a region of interest and returns the segmentation boundaries for the object at that location
+- **Image Generator** — Applies on-device diffusion models to generate visual content (launched June 29, 2023)
+
+## MediaPipe Studio
+
+[MediaPipe Studio](https://mediapipe-studio.webapps.google.com/home) is a browser-based tool to view and test MediaPipe-compatible models directly on the web — no custom testing application required.
+
+You can explore all tasks, upload your own custom-trained `.task` files, and benchmark performance directly in the browser. The ATM Playground's custom gesture model was validated using MediaPipe Studio before deployment.
+
+## Advanced Features
+
+<Accordion title="GPU Support">
+  MediaPipe supports GPU computing and rendering nodes, allowing multiple GPU nodes to run concurrently alongside CPU-based nodes. Individual nodes can leverage platform-specific APIs (OpenGL ES, Metal, Vulkan) while maintaining encapsulation and composability.
+</Accordion>
+
+<Accordion title="Tracer Module">
+  The tracer module captures timing events throughout the graph, recording time, packet timestamp, data ID, node ID, and stream ID. It generates histograms for CPU time per calculator and stream — useful for diagnosing real-time delays, memory accumulation, and synchronization issues.
+</Accordion>
+
+<Accordion title="Synchronization and Performance">
+  MediaPipe supports multimodal graphs where different calculators run concurrently in separate threads. Packet timestamps ensure accurate data flow synchronization. Many built-in calculators support GPU acceleration for faster processing.
+</Accordion>
+
+<Accordion title="Dependencies">
+  MediaPipe depends on OpenCV for video, FFMPEG for audio, and has additional dependencies including OpenGL/Metal, TensorFlow, and Eigen.
+</Accordion>
+
+## Related Technical Guides
+
+<CardGroup cols={2}>
+  <Card title="Hand Landmarker Guide" icon="hand" href="/guide/hand-landmarker">
+    Deep dive into the Hand Landmarker task: configuration options, 21 landmark reference, and integration patterns for web apps.
+  </Card>
+  <Card title="Gesture Recognition Guide" icon="hand-sparkles" href="/guide/gesture-recognition">
+    How to use the built-in GestureRecognizer task and customize it with your own gesture classes.
+  </Card>
+</CardGroup>
+
+## Conclusion
+
+MediaPipe offers a versatile framework for live and streaming media, enabling the development of customizable, production-ready, cross-platform on-device ML solutions. It's what powers the touchless interactions in the ATM Playground — from detecting the 21 hand landmarks to classifying custom gestures in real time.

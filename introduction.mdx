@@ -1,0 +1,52 @@
+---
+title: "Introduction"
+description: "An interactive touchless ATM demo built with MediaPipe Hand Landmarker and React, developed by Pratyay Banerjee during Google Summer of Code 2023."
+---
+
+## What is ATM Playground?
+
+ATM Playground is an interactive proof-of-concept web demo that enables users to perform **contactless interactions** with a simulated ATM interface using simple hand gestures. It was built by **Pratyay Banerjee** ([@Neilblaze](https://github.com/Neilblaze)) as part of **Google Summer of Code 2023** under the **TensorFlow** organization.
+
+The project harnesses the power of the MediaPipe [Hand Landmarker](https://developers.google.com/mediapipe/api/solutions/js/tasks-vision.handlandmarker) task, which precisely detects **21 key hand landmarks** in real time from a webcam feed. These landmarks drive a gesture recognition engine that translates natural hand poses into UI interactions — no physical touch required.
+
+## Background
+
+The COVID-19 pandemic raised widespread awareness of hygiene risks associated with shared touchscreens. Reports indicate that **80% of people** find public touchscreens unhygienic. Touchless gesture-based systems offer a seamless, convenient, and safer alternative for public settings such as ATMs, airports, healthcare, and retail.
+
+This project directly addresses those changing expectations by building an augmented transaction panel where users interact entirely through gestures detected from a live video feed.
+
+<Note>
+  A **webcam is required** for hand detection and gesture recognition. The demo is best experienced in **well-lit environments** and on **larger screens** for optimal accuracy.
+</Note>
+
+<Warning>
+  **GDPR Compliant**: All video data taken via the input feed is deleted immediately after inference. All processing is computed **directly on the client side** — no data is ever sent to a server.
+</Warning>
+
+## Try It Now
+
+The live demo is deployed and ready to use in your browser:
+
+- **Live Demo**: [https://atm-playground.netlify.app](https://atm-playground.netlify.app)
+- **CodeSandbox Template**: [https://codesandbox.io/p/sandbox/quizzical-neco-svhglk](https://codesandbox.io/p/sandbox/quizzical-neco-svhglk)
+
+## How It Works
+
+MediaPipe's Hand Landmarker task detects and tracks 21 landmarks on the hand in each video frame. The app maps specific landmark configurations to four gestures — HOVER, CLICK, UNDO, and GRAB — which are then dispatched via Redux to update the UI in real time.
+
+## Explore the Docs
+
+<CardGroup cols={2}>
+  <Card title="GSoC 2023 Overview" icon="graduation-cap" href="/gsoc-overview">
+    Program details, project metadata, mentor info, and timeline.
+  </Card>
+  <Card title="Architecture Overview" icon="diagram-project" href="/project/architecture">
+    React + Redux component hierarchy, MediaPipe integration, and data flow.
+  </Card>
+  <Card title="GSoC Contributions" icon="code-pull-request" href="/project/contributions">
+    All pull requests merged into googlesamples/mediapipe during GSoC 2023.
+  </Card>
+  <Card title="Live Demo" icon="play" href="/project/live-demo">
+    Try the ATM Playground in your browser and learn the supported gestures.
+  </Card>
+</CardGroup>

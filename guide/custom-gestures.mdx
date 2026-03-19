@@ -1,0 +1,232 @@
+---
+title: "Custom Gesture Integration"
+description: "How to add custom trained gestures to the ATM Playground after training with Model Maker."
+---
+
+Once you have trained a custom gesture classifier with MediaPipe Model Maker, you need to integrate it back into the ATM Playground. This page covers the two integration paths: using the exported `.task` file with the `GestureRecognizer` Task, or extending the existing landmark-based logic in `allGesture.js`.
+
+<Info>
+  **Prerequisites:** Read [MediaPipe Model Maker](/guide/model-maker) and [Gesture Recognition](/guide/gesture-recognition) before following this guide. You should have an exported `gesture_recognizer.task` file from your training run.
+</Info>
+
+---
+
+## Option A: Extend allGesture.js (landmark-based)
+
+If your new gesture can be expressed through landmark geometry — finger states, distances, or angles — adding it to `allGesture.js` is the simplest integration path. No model swap required.
+
+### Example: adding a "SCROLL" gesture
+
+Suppose you want a "SCROLL" gesture: index and middle fingers both extended, ring and little fingers closed, thumb closed.
+
+**Step 1 — Update the detection logic in `allGesture.js`:**
+
+```javascript
+// src/utils/allGesture.js
+
+function rightHandGestures(landmarks) {
+  const [thumbIsOpen, indexIsOpen, middleIsOpen, ringIsOpen, littleIsOpen] = [
+    landmarks[3].x < landmarks[2].x && landmarks[4].x < landmarks[2].x,
+    landmarks[7].y < landmarks[6].y && landmarks[8].y < landmarks[6].y,
+    landmarks[11].y < landmarks[10].y && landmarks[12].y < landmarks[10].y,
+    landmarks[15].y < landmarks[14].y && landmarks[16].y < landmarks[14].y,
+    landmarks[19].y < landmarks[17].y && landmarks[18].y < landmarks[17].y,
+  ];
+
+  if (!thumbIsOpen && !indexIsOpen && !middleIsOpen && !ringIsOpen && !littleIsOpen) {
+    return "GRAB";
+  } else if (
+    Math.sqrt(
+      Math.pow(landmarks[4].x - landmarks[8].x, 2) +
+      Math.sqrt(Math.pow(landmarks[4].y - landmarks[8].y, 2))
+    ) < 0.25
+  ) {
+    return "CLICK";
+  } else if (
+    thumbIsOpen && indexIsOpen && middleIsOpen && ringIsOpen && littleIsOpen
+    && landmarks[0].y > landmarks[12].y
+  ) {
+    return "BACKSPACE";
+  // NEW: index + middle up, others closed
+  } else if (
+    !thumbIsOpen && indexIsOpen && middleIsOpen && !ringIsOpen && !littleIsOpen
+  ) {
+    return "SCROLL";
+  } else {
+    return "HOVER";
+  }
+}
+```
+
+**Step 2 — Handle the new gesture in your component:**
+
+Any component that reads `state.hand.gesture` can now respond to `"SCROLL"`:
+
+```jsx
+// DashboardUI.jsx or any connected component
+const mapStateToProps = (state) => ({
+  gesture: state.hand.gesture,
+  finger_locx: state.hand.finger_locx,
+});
+
+// Inside the component
+if (props.gesture === 'SCROLL') {
+  // Implement scroll behaviour
+}
+```
+
+**Step 3 — (Optional) Update UIalert.jsx to show the gesture name:**
+
+```jsx
+const messageFrom = (msg) => {
+  if (msg === "HOVER")     return "Hovering \u{1F91A}";
+  if (msg === "GRAB")      return "Grabbing \u270A";
+  if (msg === "BACKSPACE") return "Undo Input \u270B";
+  if (msg === "SCROLL")    return "Scrolling \u261D";  // NEW
+  return "Clicking \u{1F44C}";
+};
+```
+
+---
+
+## Option B: Use the trained GestureRecognizer Task
+
+If your gesture requires learned features that cannot be described by landmark geometry, use the `gesture_recognizer.task` file from your Model Maker training run.
+
+### Step 1 — Copy the model file into the public directory
+
+```bash
+cp exported_model/gesture_recognizer.task public/gesture_recognizer.task
+```
+
+This makes the model servable at `http://localhost:3000/gesture_recognizer.task` and ensures the service worker precaches it.
+
+### Step 2 — Initialize GestureRecognizer alongside HandLandmarker
+
+In `Kernel.jsx`, add a `GestureRecognizer` instance next to the existing `HandLandmarker`:
+
+```jsx
+import {
+  FilesetResolver,
+  HandLandmarker,
+  GestureRecognizer,   // Add this import
+} from '@mediapipe/tasks-vision';
+
+const loadModelAndStartDetection = async () => {
+  const vision = await FilesetResolver.forVisionTasks(
+    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.2/wasm'
+  );
+
+  // Existing HandLandmarker initialization...
+  const handLandmarker = await HandLandmarker.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath: '/hand_landmarker.task',
+      delegate: 'GPU',
+    },
+    runningMode: 'IMAGE',
+    numHands: 1,
+    minHandDetectionConfidence: 0.6,
+    minHandPresenceConfidence: 0.6,
+  });
+
+  // NEW: GestureRecognizer using your custom trained model
+  const gestureRecognizer = await GestureRecognizer.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath: '/gesture_recognizer.task',  // Your exported model
+      delegate: 'GPU',
+    },
+    runningMode: 'IMAGE',
+    numHands: 1,
+  });
+
+  // Use gestureRecognizer.recognize(videoElement) in the detection loop
+};
+```
+
+### Step 3 — Replace the custom logic with recognized gestures
+
+Inside the `detectLandmarks` loop, replace the call to `rightHandGestures()` / `leftHandGestures()` with the model output:
+
+```jsx
+const detectLandmarks = async () => {
+  // Hand landmark detection (still needed for cursor positioning)
+  const landmarkResults = handLandmarker.detect(vidElm);
+  const landmarks = landmarkResults?.landmarks;
+
+  // Gesture classification via trained model
+  const gestureResults = gestureRecognizer.recognize(vidElm);
+  const topGesture = gestureResults?.gestures?.[0]?.[0]?.categoryName;
+
+  if (landmarks && landmarks.length > 0) {
+    // Dispatch the gesture name from the model
+    if (topGesture) {
+      putGesture(topGesture.toUpperCase());
+    }
+    putFingLock(landmarks[0]);
+  }
+
+  requestAnimationFrame(detectLandmarks);
+};
+```
+
+<Warning>
+  The `categoryName` returned by `GestureRecognizer` is the folder name from your dataset (e.g., `"hover"`, `"click"`). The ATM Playground expects uppercase strings (`"HOVER"`, `"CLICK"`). Apply `.toUpperCase()` when dispatching, or rename your dataset folders to uppercase.
+</Warning>
+
+### Step 4 — Update your gesture handler components
+
+Because the gesture strings now come from the model rather than `allGesture.js`, verify that all components that read `state.hand.gesture` handle the new gesture names correctly. The `CombinedCard.jsx` and `UIalert.jsx` both key off the gesture string, so adding a new gesture name is simply a matter of adding a new `if` branch.
+
+---
+
+## Practical example: adding a "PEACE" gesture
+
+Suppose you want users to confirm a transaction with a peace sign (V-sign: index and middle up, others curled).
+
+<Steps>
+  <Step title="Collect training data">
+    Photograph or record ~150 images of your peace gesture and ~150 "none" images. Organize them:
+
+    ```
+    dataset/
+    ├── none/
+    └── peace/
+    ```
+  </Step>
+
+  <Step title="Train with Model Maker">
+    Run the notebook from [MediaPipe Model Maker](/guide/model-maker). Export `gesture_recognizer.task`.
+  </Step>
+
+  <Step title="Copy the model and update Kernel.jsx">
+    ```bash
+    cp exported_model/gesture_recognizer.task public/gesture_recognizer.task
+    ```
+
+    Follow Option B steps 2–3 above to load `GestureRecognizer` and dispatch `"PEACE"` from the detection loop.
+  </Step>
+
+  <Step title="Wire up the PEACE gesture in DashboardUI.jsx">
+    ```jsx
+    // In the withdrawal confirmation view
+    useEffect(() => {
+      if (props.gesture === 'PEACE' && isOnConfirmationScreen) {
+        confirmWithdrawal();
+      }
+    }, [props.gesture]);
+    ```
+  </Step>
+</Steps>
+
+---
+
+## Related pages
+
+<CardGroup cols={2}>
+  <Card title="Gesture Recognition" icon="wand-magic-sparkles" href="/guide/gesture-recognition">
+    The existing landmark-based detection logic in allGesture.js.
+  </Card>
+  <Card title="MediaPipe Model Maker" icon="flask" href="/guide/model-maker">
+    Training a custom gesture classifier from your own image dataset.
+  </Card>
+</CardGroup>

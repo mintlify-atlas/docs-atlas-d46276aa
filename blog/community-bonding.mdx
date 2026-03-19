@@ -1,0 +1,133 @@
+---
+title: "GSoC '23 Community Bonding Period"
+description: Insights from the community bonding phase of GSoC 2023 — Pratyay Banerjee's experience joining the TensorFlow/MediaPipe community before the coding period began.
+---
+
+## Preface
+
+This blog documents the **Community Bonding** period after selection in Google Summer of Code 2023 under the [TensorFlow](https://www.tensorflow.org) organization with [MediaPipe](http://mediapipe.dev).
+
+I am **Pratyay Banerjee**, aka [Neilblaze](https://neilblaze.live). I have a major in Electronics & Communication Engineering with interests at the intersection of Machine Learning (Computer Vision) and Web development. I'm also a technical writer and a part-time designer — and a hackathon aficionado striving to build SOTA solutions for challenging problems by intersecting Web & Machine Learning.
+
+This year I was selected as a student participant in **Google Summer of Code 2023** under the TensorFlow organization. I spent the next 10 weeks developing **Interactive Web Demos using the MediaPipe Machine Learning Library**.
+
+<Tip>
+  The Community Bonding period (before coding begins) is one of the most valuable parts of GSoC. Use it to introduce yourself, understand the codebase, meet your mentors, and set up your development environment — not just wait for the coding period to start.
+</Tip>
+
+## Getting Started with GSoC
+
+GSoC 2023 marked my official entry into a structured open-source mentorship program. After acceptance, contributors enter a **Community Bonding Period** — typically 3 weeks — designed to help them integrate into their organization's community before any code is written.
+
+For the full project details, visit the official GSoC project page:
+
+**[Interactive Web Demos using the MediaPipe Machine Learning Library](https://summerofcode.withgoogle.com/programs/2023/projects/pd9KgnNP)**
+
+## About the Organization
+
+TensorFlow is an open-source machine learning framework developed by Google that has gained widespread adoption among researchers, developers, and practitioners worldwide.
+
+**MediaPipe**, within the TensorFlow ecosystem, is an open-source framework built on TensorFlow that enables the development of cross-platform pipelines for various media processing applications. It focuses specifically on:
+
+- Video analysis and gesture recognition
+- Augmented reality effects
+- Real-time perception pipelines
+- Cross-platform deployment (mobile, desktop, web)
+
+Being part of the TensorFlow organization means working alongside a vibrant and diverse community with a strong commitment to open-source collaboration, innovation, and knowledge sharing.
+
+## Meeting the Mentor and Community
+
+I had been active with the TensorFlow community since 2021, actively contributing to [TFjs](https://github.com/tensorflow/tfjs), [MediaPipe](https://github.com/google/mediapipe), and [MediaPipe Samples](https://github.com/googlesamples/mediapipe).
+
+During the bonding period, I established working relationships with:
+
+- **[Jen Person](https://github.com/jenperson)** — Primary mentor
+- **[Paul TR](https://github.com/PaulTR)** — Stepped in as acting guide during Google I/O 2023 and other mentor obligations
+- **[Jason Mayes](https://github.com/jasonmayes)** — Advisor and guide
+- **[Sayak Paul](https://github.com/sayakpaul)** — Additional mentor support
+
+The bonding period coincided with [Google I/O 2023](https://io.google/), which brought exciting new announcements for MediaPipe Solutions and gave additional context to the project's direction.
+
+## Setting Up the Development Environment
+
+One of the key objectives of the community bonding period was getting the development environment fully operational before coding started. This included:
+
+<Steps>
+  <Step title="Install Node.js and project dependencies">
+    Set up a local Node.js environment for the React-based ATM Playground web app.
+
+    ```bash
+    # Clone the MediaPipe samples repository
+    git clone https://github.com/googlesamples/mediapipe.git
+
+    # Navigate to the ATM Playground project
+    cd tutorials/atm_playground
+
+    # Install dependencies
+    npm install
+    ```
+  </Step>
+
+  <Step title="Explore the MediaPipe API documentation">
+    Thoroughly reviewed the [MediaPipe Tasks Vision API docs](https://developers.google.com/mediapipe/api/solutions/js/tasks-vision) and explored the new MediaPipe Vision [Samples](https://developers.google.com/mediapipe/solutions/examples) to understand what was possible.
+  </Step>
+
+  <Step title="Revise the proposal and set milestones">
+    Revisited the accepted GSoC proposal and translated it into concrete weekly development milestones aligned with the 10-week coding period.
+  </Step>
+
+  <Step title="Build an MVP">
+    Started creating a minimum viable prototype for the discussed solution — an interactive touchless ATM demo — using hand landmark detection from MediaPipe's Tasks API.
+  </Step>
+
+  <Step title="Complete GSoC onboarding tasks">
+    Finished all required GSoC onboarding tasks including tax forms, participant agreements, and contributor profile setup.
+  </Step>
+</Steps>
+
+## Initial Project Planning
+
+The project centers on building **Interactive Web Demos using the MediaPipe Machine Learning Library**, specifically a touchless ATM playground that demonstrates contactless gesture-based interaction.
+
+Key decisions made during the bonding period:
+
+- **Technology stack**: React.js + Redux + Tailwind CSS for the frontend
+- **ML library**: MediaPipe `@mediapipe/tasks-vision` for hand tracking and gesture recognition
+- **Core feature**: Use the Hand Landmarker task's 21 landmark points to drive a cursor on screen
+- **Custom gestures**: Train a custom gesture recognizer using MediaPipe Model Maker
+- **Offline support**: Implement a Workbox-based service worker for offline caching
+
+<Note>
+  The final ATM Playground demo is live at [https://atm-playground.netlify.app](https://atm-playground.netlify.app). It requires webcam access and works best in well-lit environments on larger screens.
+</Note>
+
+## Activities During the Community Bonding Period
+
+Here is a summary of what was accomplished before the coding period officially began:
+
+<Accordion title="Development environment setup">
+  Configured a local development environment with Node.js, verified all MediaPipe packages were correctly installed, and confirmed the webcam-based demo ran without errors in the browser.
+</Accordion>
+
+<Accordion title="API and documentation review">
+  Went through the full [MediaPipe API docs](https://developers.google.com/mediapipe/api/solutions/js/tasks-vision) and explored both legacy MediaPipe solutions and the new Tasks API. Identified the `HandLandmarker` and `GestureRecognizer` tasks as the core components for the project.
+</Accordion>
+
+<Accordion title="Community introductions">
+  Introduced myself to the TensorFlow/MediaPipe community, connected with other GSoC 2023 participants, and participated in community discussions on GitHub and internal channels.
+</Accordion>
+
+<Accordion title="Proposal revision and milestone planning">
+  Revisited the accepted proposal and created a detailed week-by-week breakdown of development goals, ensuring the final deliverable would be ready before the GSoC evaluation deadline.
+</Accordion>
+
+<Accordion title="Continued learning">
+  Deepened understanding of React component patterns, Redux state management, Tailwind CSS, and the MediaPipe Tasks Vision JavaScript API — all critical to the final implementation.
+</Accordion>
+
+## Conclusion
+
+The Community Bonding period was an invaluable ramp-up phase. By the time coding started, the development environment was ready, relationships with mentors were established, and a clear plan was in place. The groundwork laid here made the coding weeks significantly more productive.
+
+Stay tuned — the coding period results in the [MediaPipe ATM Playground](/blog/building-interactive-demo), a fully functional touchless interface powered by hand gesture detection.

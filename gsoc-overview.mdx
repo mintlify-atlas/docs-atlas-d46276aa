@@ -1,0 +1,82 @@
+---
+title: "GSoC 2023 Overview"
+description: "Details of Pratyay Banerjee's Google Summer of Code 2023 project under the TensorFlow organization."
+---
+
+## What is Google Summer of Code?
+
+[Google Summer of Code](https://summerofcode.withgoogle.com/) (GSoC) is a global program that offers contributors an opportunity to work on open source projects under the guidance of a mentor from a participating organization. Contributors receive a stipend and collaborate with experienced developers to deliver meaningful improvements to real-world projects over the course of a summer.
+
+## Project Details
+
+| Field | Value |
+|---|---|
+| **Year** | 2023 |
+| **Organization** | [TensorFlow](https://www.tensorflow.org) |
+| **Project Title** | Interactive Web Demos using the MediaPipe Machine Learning Library |
+| **Project Size** | Medium |
+| **Mentor** | [Jen Person](https://www.linkedin.com/in/jennifer-person) ([@jenperson](https://github.com/jenperson)) |
+| **Contributor** | Pratyay Banerjee ([@Neilblaze](https://github.com/Neilblaze)) |
+| **Repository** | [googlesamples/mediapipe](https://github.com/googlesamples/mediapipe) |
+| **Official GSoC Page** | [summerofcode.withgoogle.com/programs/2023/projects/pd9KgnNP](https://summerofcode.withgoogle.com/programs/2023/projects/pd9KgnNP) |
+
+## Project Summary
+
+The project aimed to build an interactive web demo showcasing the capabilities of the MediaPipe [Hand Landmarker](https://developers.google.com/mediapipe/api/solutions/js/tasks-vision.handlandmarker) task. The result is the **ATM Playground** — a touchless ATM simulation where users interact entirely through hand gestures detected from a webcam feed.
+
+Google's [MediaPipe Solutions](https://developers.google.com/mediapipe/solutions/guide) helps developers add machine learning to end-user devices including mobile, web, and IoT. The Hand Landmarker task accurately detects and tracks **21 hand landmarks** per frame, which this project uses to power a fully gesture-driven UI.
+
+## Timeline
+
+<Steps>
+  <Step title="Community Bonding Period">
+    Engaged with the TensorFlow and MediaPipe open source communities, explored the codebase, aligned on project scope with mentor Jen Person, and documented insights in a [blog post](https://blog.neilblaze.live/gsoc'23-community-bonding-period).
+  </Step>
+  <Step title="Coding Phase 1 — Core Demo">
+    Built the initial interactive ATM Playground web demo using React, MediaPipe Tasks Vision API, and Redux. Implemented gesture recognition, custom UI components, and handcrafted assets using Figma and Adobe tools.
+  </Step>
+  <Step title="Coding Phase 2 — Offline Support">
+    Enhanced the demo with offline support via Workbox service workers using a `stale-while-revalidate` caching strategy. Fixed UI bugs, refactored code, and updated documentation.
+  </Step>
+  <Step title="Final Submission">
+    Submitted all contributions via pull requests to [googlesamples/mediapipe](https://github.com/googlesamples/mediapipe). Deployed the live demo on Netlify and published a CodeSandbox template. Wrote tutorial blog posts covering implementation and custom gesture prediction.
+  </Step>
+</Steps>
+
+## Key Contributions
+
+- Developed a fully functional touchless ATM demo using the MediaPipe Tasks Vision API
+- Implemented custom gesture recognition logic without using the `GestureRecognizer` task — built directly from raw hand landmark data
+- Added offline support with Workbox service workers and `stale-while-revalidate` caching
+- Deployed on [Netlify](https://atm-playground.netlify.app) and exported as a [CodeSandbox template](https://codesandbox.io/p/sandbox/quizzical-neco-svhglk)
+- Documented the project with a comprehensive tutorial and four blog posts
+
+See [GSoC Contributions](/project/contributions) for a full breakdown of merged pull requests.
+
+## Acknowledgements
+
+Participating in GSoC 2023 for the first time was a transformative experience. Special thanks to:
+
+- **[Jen Person](https://github.com/jenperson)** — Mentor, for invaluable feedback and guidance throughout the project
+- **[Paul Ruiz](https://github.com/PaulTR)** — For immense support throughout the program
+- **[Jason Mayes](https://github.com/jasonmayes)** — For valuable feedback on the proposal
+
+## Frequently Asked Questions
+
+<AccordionGroup>
+  <Accordion title="What is Google Summer of Code?">
+    GSoC is an annual program by Google that connects open source organizations with contributors. Accepted contributors work on a defined project over the summer under the guidance of an experienced mentor from the organization.
+  </Accordion>
+  <Accordion title="Which organization was this project under?">
+    This project was completed under the **TensorFlow** organization. The work was contributed to the [googlesamples/mediapipe](https://github.com/googlesamples/mediapipe) repository.
+  </Accordion>
+  <Accordion title="What is MediaPipe Hand Landmarker?">
+    MediaPipe Hand Landmarker is a task from MediaPipe Solutions that detects and tracks **21 key points** on the human hand from an image or video stream. It supports both `IMAGE` and `VIDEO` running modes and can detect multiple hands simultaneously.
+  </Accordion>
+  <Accordion title="Why was an ATM chosen as the demo subject?">
+    ATMs are a high-traffic shared touchscreen device with clear hygiene concerns, making them an ideal candidate to demonstrate the practical value of touchless gesture-based interaction. The use case is immediately relatable and showcases the technology's real-world applicability.
+  </Accordion>
+  <Accordion title="Where can I read the blog posts from the GSoC journey?">
+    All blog posts are published at [blog.neilblaze.live](https://blog.neilblaze.live). They cover topics including the community bonding period, a holistic preview of MediaPipe, building the interactive web demo, and predicting custom gestures.
+  </Accordion>
+</AccordionGroup>

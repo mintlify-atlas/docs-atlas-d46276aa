@@ -1,0 +1,344 @@
+---
+title: "App Components"
+description: "React component breakdown for the ATM Playground."
+---
+
+The ATM Playground follows a standard Create React App structure. The `src/` directory contains all React components, Redux logic, and utility modules.
+
+---
+
+## Component tree
+
+```
+src/
+├── App.jsx                    → Root component
+├── index.jsx                   → Entry point, Redux Provider + service worker
+├── components/
+│   ├── Kernel.jsx              → MediaPipe integration, webcam loop
+│   ├── Landing.jsx             → Camera permission check, loading screen
+│   ├── DashboardUI.jsx         → Main ATM UI
+│   └── CustComponents/
+│       ├── CombinedCard.jsx    → Gesture-reactive card
+│       ├── CursorTip.jsx       → Hand-tracked cursor
+│       ├── ModalC1.jsx         → Info modal
+│       ├── UIalert.jsx         → Gesture status alerts
+│       └── TimeComponent.jsx   → Live clock display
+├── redux/
+│   ├── store.js
+│   └── gesture/
+│       ├── gesture.forms.js    → Action type constants
+│       ├── gesture.handler.js  → Reducer
+│       └── gesture.ops.js      → Action creators
+└── utils/
+    └── allGesture.js           → Gesture detection functions
+```
+
+---
+
+## Redux store shape
+
+The entire gesture and landmark state lives in a single `hand` slice:
+
+```javascript
+// Initial state — from src/redux/gesture/gesture.handler.js
+const initialState = {
+  gesture: null,        // Current gesture string or null
+  finger_locx: null,   // 21-element NormalizedLandmark array or null
+  loaded: false,        // True after the 5.5s initialization timer fires
+};
+```
+
+Full store shape:
+
+```javascript
+{
+  hand: {
+    gesture: "HOVER" | "CLICK" | "UNDO" | "GRAB" | "BACKSPACE" | null,
+    finger_locx: NormalizedLandmark[] | null,  // 21 landmarks
+    loaded: boolean
+  }
+}
+```
+
+---
+
+## Action creators
+
+Defined in `src/redux/gesture/gesture.ops.js`:
+
+```javascript
+import { GEST_ASSIGN, FINLOCK_ASSIGN, INIT_ASSIGN } from "./gesture.forms";
+
+// Dispatch the current gesture string
+export const putGesture = (gesture) => ({
+  type: GEST_ASSIGN,
+  payload: gesture,
+});
+
+// Dispatch the full 21-landmark array
+export const putFingLock = (locs) => ({
+  type: FINLOCK_ASSIGN,
+  payload: locs,
+});
+
+// Mark the app as initialized (called after 5.5s timer in Landing.jsx)
+export const putInitialze = () => ({
+  type: INIT_ASSIGN,
+});
+```
+
+Action type constants (`gesture.forms.js`):
+
+```javascript
+export const GEST_ASSIGN = "GEST_ASSIGN";
+export const FINLOCK_ASSIGN = "FINLOCK_ASSIGN";
+export const INIT_ASSIGN = "INIT_ASSIGN";
+```
+
+---
+
+## Component reference
+
+### App.jsx
+
+The root component. Renders the four top-level components within a full-screen div:
+
+- `<Kernel />` — invisible, runs the MediaPipe detection loop
+- `<CursorTip />` — floating cursor overlay
+- `<UIalert />` — gesture status toast area
+- `<Landing />` — loading screen or `<DashboardUI />` once loaded
+
+---
+
+### Kernel.jsx
+
+The brain of the app. Owns the webcam stream and the MediaPipe `HandLandmarker` instance.
+
+**Responsibilities:**
+- Creates the `HandLandmarker` instance on mount.
+- Starts `navigator.mediaDevices.getUserMedia` to access the webcam.
+- Runs a `requestAnimationFrame` loop calling `handLandmarker.detect()` each frame.
+- Dispatches `putGesture()` and `putFingLock()` to Redux each frame.
+- Renders a hidden `<canvas>` that draws the landmark skeleton overlay.
+
+**Redux actions dispatched:** `putGesture`, `putFingLock`, `putInitialze`
+
+```jsx
+// Kernel.jsx — Redux wiring
+const mapDispatchToProps = {
+  putGesture,
+  putFingLock,
+  putInitialze,
+};
+
+export default connect(null, mapDispatchToProps)(Kernel);
+```
+
+See [Hand Landmarker](/guide/hand-landmarker) for the full initialization and detection loop code.
+
+---
+
+### Landing.jsx
+
+Handles the application startup sequence:
+
+1. Requests camera permission via `navigator.mediaDevices.getUserMedia`.
+2. Shows a loading screen while `loaded === false` in Redux.
+3. After a 5.5 second timer, calls `putInitialze()` to set `loaded: true`.
+4. Once `loaded` is `true`, renders `<DashboardUI />`.
+
+```jsx
+// Landing.jsx — simplified startup logic
+const loaded = props.loaded;
+const [cameraPermissionAllowed, setCameraPermissionAllowed] = useState(false);
+
+useEffect(() => {
+  const checkCameraPermission = async () => {
+    try {
+      await navigator.mediaDevices.getUserMedia({ video: true });
+      setCameraPermissionAllowed(true);
+    } catch (error) {
+      setCameraPermissionAllowed(false);
+    }
+  };
+
+  checkCameraPermission();
+
+  const timer = setTimeout(() => {
+    props.putInitialze();  // Triggers transition to DashboardUI
+  }, 5500);
+
+  return () => clearTimeout(timer);
+}, []);
+
+if (!loaded) {
+  return ( /* loading screen */ );
+} else {
+  return <DashboardUI />;
+}
+```
+
+---
+
+### DashboardUI.jsx
+
+The main ATM interface rendered after loading. Contains:
+
+- PIN entry panel with numeric buttons (each wrapped in `<CombinedCard>`)
+- Account dashboard with balance, withdrawal, and mini-statement views
+- Logout / navigation controls (ESC key support)
+- React Toastify integration for user notifications
+- React Confetti for successful transaction celebration
+
+---
+
+### CombinedCard.jsx
+
+A gesture-reactive card component. The `isHovering()` function checks whether the index finger tip (landmark 8) is positioned over this card's DOM bounding box:
+
+```jsx
+// CombinedCard.jsx — hover detection
+const isHovering = () => {
+  if (!props.finger_locx) return false;
+  const pos = actionPose(cardRef.current);  // Absolute page position of card
+  if (pos.x === 0) return false;
+
+  const hpos = {
+    // Mirror x-axis to match the flipped camera feed
+    x: window.innerWidth - props.finger_locx[8].x * window.innerWidth,
+    y: props.finger_locx[8].y * window.innerHeight,
+  };
+
+  if (
+    pos.x <= hpos.x &&
+    hpos.x <= pos.x + cardRef.current.offsetWidth - 12 &&
+    pos.y <= hpos.y &&
+    hpos.y <= pos.y + cardRef.current.offsetHeight - 12
+  ) {
+    return true;
+  } else {
+    return false;
+  }
+};
+
+// Fire onClick when hovering + CLICK gesture + 1-second debounce
+if (
+  isHovering() &&
+  props.gesture === "CLICK" &&
+  props.onClick &&
+  Date.now() - 1000 > lastClicked
+) {
+  props.onClick();
+  setLastClicked(Date.now());
+}
+```
+
+**Props:**
+
+<ParamField path="type" type="string">
+  Card style variant. One of: `'default'`, `'card2'`, `'card2b'`, `'card3'`, `'card4'`, `'card5'`. Each maps to a different Tailwind color scheme and size.
+</ParamField>
+
+<ParamField path="onClick" type="function">
+  Callback invoked when the user performs a CLICK gesture while hovering over this card. Debounced to fire at most once per second.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes appended to the card container.
+</ParamField>
+
+**Redux state read:** `state.hand.gesture`, `state.hand.finger_locx`
+
+---
+
+### CursorTip.jsx
+
+Renders the floating cursor dot that tracks the index finger tip. Its position and color update on every Redux `finger_locx` change:
+
+```jsx
+// CursorTip.jsx — position update via useEffect
+useEffect(() => {
+  if (!props.finger_locx) return;
+
+  const cursorStyle = cursorRef.current.style;
+  cursorStyle.display = "flex";
+  // Mirror x-axis to match the flipped camera view
+  cursorStyle.left = `${window.innerWidth - props.finger_locx[8].x * window.innerWidth}px`;
+  cursorStyle.top  = `${props.finger_locx[8].y * window.innerHeight}px`;
+
+  // Auto-hide after 500ms if no new landmark data arrives
+  const interval = setTimeout(() => {
+    cursorStyle.display = "none";
+  }, 500);
+
+  return () => clearTimeout(interval);
+}, [props.finger_locx]);
+```
+
+Cursor color encodes the active gesture:
+
+| Gesture | Cursor color |
+|---------|--------------|
+| HOVER (default) | White |
+| CLICK | Green (`bg-green-500`) |
+| GRAB | Blue (`bg-blue-500`) |
+| BACKSPACE | Red (`bg-red-500`) |
+
+**Redux state read:** `state.hand.gesture`, `state.hand.finger_locx`
+
+---
+
+### ModalC1.jsx
+
+A full-screen overlay modal that displays instructional GIFs and images. It has two states controlled by `showModal` and `showModal2` props. Clicking anywhere on the overlay calls `handleModalInteraction` to advance or close the modal.
+
+```jsx
+// ModalC1.jsx — simplified render
+const ModalC1 = ({ showModal, showModal2, handleModalInteraction }) =>
+  showModal ? (
+    <div className="fixed top-0 ... bg-black" onClick={handleModalInteraction}>
+      <img src="./initialModal.gif" alt="" className="pointer-events-none" />
+    </div>
+  ) : showModal2 ? (
+    <div className="fixed top-0 ... bg-black" onClick={handleModalInteraction}>
+      <img src="./nextModal.png" alt="" className="pointer-events-none" />
+    </div>
+  ) : null;
+```
+
+---
+
+### UIalert.jsx
+
+Displays a real-time toast-style indicator of the current gesture state. Also listens for the physical `Backspace` key and dispatches the `"BACKSPACE"` gesture action.
+
+Gesture-to-message mapping:
+
+```jsx
+const messageFrom = (msg) => {
+  if (msg === "HOVER")     return "Hovering \u{1F91A}";
+  else if (msg === "GRAB") return "Grabbing \u270A";
+  else if (msg === "BACKSPACE") return "Undo Input \u270B";
+  else                     return "Clicking \u{1F44C}";
+};
+```
+
+**Redux state read:** `state.hand.gesture`, `state.hand.finger_locx`, `state.hand.loaded`
+
+---
+
+## Store configuration
+
+```javascript
+// src/redux/store.js
+import { configureStore } from "@reduxjs/toolkit";
+import rootReducer from "./root.handler";
+
+const store = configureStore({
+  reducer: rootReducer,
+});
+
+export default store;
+```
+
+The store is provided to the entire component tree via `<Provider store={store}>` in `index.jsx`.

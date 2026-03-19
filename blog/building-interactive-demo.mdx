@@ -1,0 +1,549 @@
+---
+title: "Building the Interactive Web Demo"
+description: Step-by-step tutorial for building the MediaPipe ATM Playground — a touchless, gesture-controlled ATM interface using Hand Landmarker and React.
+---
+
+## Preface
+
+This post is part of the GSoC 2023 series with TensorFlow. It showcases the **MediaPipe ATM Playground** — an interactive web demo highlighting touchless interactions using MediaPipe's Machine Learning Library.
+
+The project demonstrates how the new [Hand Landmarker](https://developers.google.com/mediapipe/api/solutions/js/tasks-vision.handlandmarker) task from MediaPipe Solutions provides precise hand landmark detection, generating **21 key points** on each detected hand. These landmarks drive a cursor that enables users to perform contactless interactions through simple gestures.
+
+<Note>
+  Live demo: [https://atm-playground.netlify.app](https://atm-playground.netlify.app)
+  
+  Try it directly in your browser on CodeSandbox: [https://codesandbox.io/p/sandbox/quizzical-neco-svhglk](https://codesandbox.io/p/sandbox/quizzical-neco-svhglk)
+</Note>
+
+## Why Touchless?
+
+The COVID-19 pandemic heightened awareness of touch-related hygiene risks. Studies indicate **80% of people view public touchscreens as unhygienic**. Touchless gesture-based systems hold the potential to reshape public spaces, workplaces, and industries — ATMs, airports, retail, healthcare, and hospitality.
+
+This project translates everyday hand gestures into a digital language, demonstrating how contactless interaction can be built entirely in the browser using MediaPipe.
+
+<Note>
+  All data taken via the input video feed is deleted after inference is returned. All computation is performed entirely on the client side, making it [GDPR](https://gdpr-info.eu/) compliant.
+</Note>
+
+## Prerequisites
+
+### What You'll Need
+
+- A local development environment with **Node.js** installed (or a CodeSandbox account)
+- A device with a **web browser and webcam**
+- Basic knowledge of React.js, JavaScript, CSS, and HTML
+
+<Note>
+  The project uses [Tailwind CSS](https://tailwindcss.com/) and [Redux](https://redux.js.org/) to minimize boilerplate. Most static assets were handcrafted in Figma. Sound effects are royalty-free audio from Pixabay.
+</Note>
+
+### Key Dependencies
+
+| Dependency | Description |
+|------------|-------------|
+| `@mediapipe/tasks-vision` | Provides vision tasks for MediaPipe solutions |
+| `react` | Library for building user interfaces |
+| `react-redux` | React bindings for Redux state management |
+| `redux` | State management library |
+| `@reduxjs/toolkit` | Toolkit for efficient Redux development |
+| `tailwindcss` | Utility-first CSS framework |
+| `react-toastify` | Toast notifications in React |
+| `react-confetti` | Confetti animations |
+
+**Workbox (offline caching):**
+
+| Dependency | Description |
+|------------|-------------|
+| `workbox-precaching` | Precaches resources during service worker installation |
+| `workbox-strategies` | Offers caching strategies (StaleWhileRevalidate, etc.) |
+| `workbox-routing` | Implements routing strategies for service workers |
+| `workbox-expiration` | Manages expiration policies for cached resources |
+
+## Getting Started
+
+<Tabs>
+  <Tab title="CodeSandbox">
+    Navigate to the [CodeSandbox Template](https://codesandbox.io/p/sandbox/quizzical-neco-svhglk). The webapp spins up instantly in the preview panel.
+
+    When the browser asks for webcam access, click **Allow**.
+
+    For the best experience, open the app in a new tab using the "Open in New Tab" button in CodeSandbox.
+
+    You can fork the project (`Ctrl+S` / `Cmd+S`) to save a copy in your CodeSandbox account and make your own modifications.
+
+    <Warning>
+      Do not modify the `.codesandbox` configuration files — this may break the app.
+    </Warning>
+  </Tab>
+  <Tab title="Local Machine">
+    Follow these steps to run the app locally:
+
+    ```bash
+    # 1. Clone the repository
+    git clone https://github.com/googlesamples/mediapipe.git
+
+    # 2. Navigate to the ATM Playground
+    cd tutorials/atm_playground
+
+    # 3. Install dependencies
+    npm install
+
+    # 4. Start the development server
+    npm start
+    ```
+
+    Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+    <Warning>
+      A functioning webcam is required for hand detection and gesture recognition.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## UX Flow
+
+Once running, here is how the app works:
+
+1. **Landing page** — The app requests webcam permission. Click **Allow**.
+2. **Model loading** — Necessary MediaPipe models load. When a hand is detected, a cursor appears on-screen controlled by the index fingertip.
+3. **Login page** — An information modal explains available gestures.
+4. **PIN entry** — Use the cursor to select digits. The correct PIN grants dashboard access.
+5. **Account dashboard** — Check balance, withdraw cash, or view mini statement. Press **ESC** to navigate back.
+
+### Available Gestures
+
+| Gesture | Hand Shape | Action |
+|---------|------------|--------|
+| **HOVER** | Open hand (🤚) | Move cursor; hover over elements |
+| **CLICK** | Pinch (👌) | Click the hovered element |
+| **UNDO** | Open palm facing camera (✋) | Undo last PIN input |
+| **GRAB** | Closed fist (✊) | Show the info modal |
+
+## Architecture Overview
+
+The application follows a React component hierarchy with Redux for shared gesture state:
+
+```
+App.jsx
+├── Kernel.jsx          ← MediaPipe hand tracking (the brain)
+├── CursorTip.jsx       ← On-screen cursor driven by landmarks
+├── UIalert.jsx         ← Gesture status alerts
+└── Landing.jsx         ← Entry point → renders DashboardUI
+    └── DashboardUI.jsx ← ATM interface (login, PIN, dashboard)
+        ├── CombinedCard.jsx    ← Hoverable/clickable card
+        ├── ModalC1.jsx         ← Information modal
+        └── TimeComponent.jsx   ← Live clock display
+```
+
+Gesture state flows from `Kernel.jsx` → Redux store → all other components via `connect`.
+
+## Folder Structure
+
+```
+atm_playground/
+├── public/
+│   ├── hand_landmarker.task    ← MediaPipe HandLandmarker TASK file (precached)
+│   ├── index.html              ← Root HTML file
+│   ├── manifest.json           ← App manifest
+│   └── [static assets]        ← Images, GIFs, audio clips
+│
+├── src/
+│   ├── App.jsx                 ← Component hierarchy root
+│   ├── index.jsx               ← App entry point + service worker registration
+│   ├── index.css               ← Tailwind CSS globals
+│   │
+│   ├── components/
+│   │   ├── CustComponents/
+│   │   │   ├── CombinedCard.jsx
+│   │   │   ├── CursorTip.jsx
+│   │   │   ├── ModalC1.jsx
+│   │   │   ├── TimeComponent.jsx
+│   │   │   └── UIalert.jsx
+│   │   ├── Landing.jsx
+│   │   ├── Kernel.jsx
+│   │   └── DashboardUI.jsx
+│   │
+│   ├── redux/
+│   │   ├── gesture/
+│   │   │   ├── gesture.forms.js    ← Action type constants
+│   │   │   ├── gesture.handler.js  ← Reducer
+│   │   │   └── gesture.ops.js      ← Action creators
+│   │   ├── root.handler.js         ← Root reducer
+│   │   └── store.js                ← Redux store
+│   │
+│   ├── service-worker.js           ← Workbox offline caching
+│   ├── serviceWorkerRegistration.js
+│   └── utils/
+│       └── allGesture.js           ← Gesture classification logic
+│
+├── tailwind.config.js
+├── postcss.config.js
+└── package.json
+```
+
+## Building the App — Step by Step
+
+<Steps>
+  <Step title="CombinedCard.jsx — Hover and click detection">
+    The `CombinedCard` component renders a hoverable/clickable card that checks whether the user's index fingertip is positioned over it.
+
+    The `isHovering` function compares the card's bounding box position against the mirrored finger coordinates from MediaPipe:
+
+    ```jsx
+    const isHovering = () => {
+      if (!props.finger_locx) return false;
+      const pos = actionPose(cardRef.current);
+      if (pos.x === 0) return false;
+
+      const hpos = {
+        x: window.innerWidth - props.finger_locx[8].x * window.innerWidth,
+        y: props.finger_locx[8].y * window.innerHeight
+      };
+
+      if (
+        pos.x <= hpos.x &&
+        hpos.x <= pos.x + cardRef.current.offsetWidth - 12 &&
+        pos.y <= hpos.y &&
+        hpos.y <= pos.y + cardRef.current.offsetHeight - 12
+      )
+        return true;
+      else return false;
+    };
+
+    // Trigger onClick when hovering + CLICK gesture detected
+    // with a 1-second cooldown to prevent rapid repeated clicks
+    if (
+      isHovering() &&
+      props.gesture === "CLICK" &&
+      props.onClick &&
+      Date.now() - 1000 > lastClicked
+    ) {
+      props.onClick();
+      setLastClicked(Date.now());
+    }
+    ```
+
+    `finger_locx[8]` refers to the **index fingertip** landmark (landmark #8 in MediaPipe's 21-point hand model).
+  </Step>
+
+  <Step title="CursorTip.jsx — On-screen cursor">
+    `CursorTip` renders a floating cursor that tracks the index fingertip position. It updates on every new `finger_locx` value from Redux and disappears after 500ms of no detection:
+
+    ```jsx
+    useEffect(() => {
+      if (!props.finger_locx) return;
+
+      const cursorStyle = cursorRef.current.style;
+      cursorStyle.display = "flex";
+      // Mirror the x-axis so cursor matches the user's natural hand direction
+      cursorStyle.left = `${
+        window.innerWidth - props.finger_locx[8].x * window.innerWidth
+      }px`;
+      cursorStyle.top = `${
+        props.finger_locx[8].y * window.innerHeight
+      }px`;
+
+      // Auto-hide after 500ms if no new landmark data
+      const interval = setTimeout(() => {
+        cursorStyle.display = "none";
+      }, 500);
+
+      return () => clearTimeout(interval);
+    }, [props.finger_locx]);
+    ```
+  </Step>
+
+  <Step title="ModalC1.jsx — Information modal">
+    A conditional modal rendered based on `showModal` and `showModal2` props. Clicking anywhere dismisses it:
+
+    ```jsx
+    // Minified version
+    const ModalC1 = ({ showModal, showModal2, handleModalInteraction }) =>
+      showModal ? (
+        <div
+          className="fixed top-0 ... bg-black"
+          onClick={handleModalInteraction}
+        >
+          <img
+            src="./initialModal.gif"
+            alt=""
+            className="w-2.5/5 ... pointer-events-none"
+          />
+        </div>
+      ) : showModal2 ? (
+        <div
+          className="fixed top-0 ... bg-black"
+          onClick={handleModalInteraction}
+        >
+          <img
+            src="./nextModal.png"
+            alt=""
+            className="w-3/5 ... pointer-events-none"
+          />
+        </div>
+      ) : null;
+    ```
+  </Step>
+
+  <Step title="Kernel.jsx — MediaPipe hand tracking core">
+    `Kernel.jsx` is the brain of the app. It initializes the MediaPipe `HandLandmarker` task, starts the webcam, detects landmarks on every frame, and dispatches gesture and finger position updates to Redux.
+
+    **Import the Tasks Vision package:**
+
+    ```jsx
+    import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
+    import { useRef, useEffect } from 'react';
+    import { connect } from 'react-redux';
+    import { putGesture, putFingLock, putInitialze } from '../redux/gesture/gesture.ops';
+    import { rightHandGestures, leftHandGestures } from '../utils/allGesture';
+    ```
+
+    **Initialize the HandLandmarker with local-first, CDN fallback loading:**
+
+    ```jsx
+    const loadModelAndStartDetection = async () => {
+      const vision = await FilesetResolver.forVisionTasks(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.2/wasm'
+      );
+
+      let handLandmarker;
+      try {
+        // Try loading model from local public/ directory (faster)
+        handLandmarker = await HandLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: '/hand_landmarker.task',
+            delegate: 'GPU',
+          },
+          runningMode: 'IMAGE' || 'VIDEO',
+          numHands: 1,
+          minHandDetectionConfidence: 0.6,
+          minHandPresenceConfidence: 0.6,
+        });
+      } catch (localError) {
+        // Fallback: load from CDN
+        handLandmarker = await HandLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: 'hand_landmarker.task',
+            delegate: 'GPU',
+          },
+          // ... same options
+        });
+      }
+    };
+    ```
+
+    **Start the camera and run detection per frame:**
+
+    ```jsx
+    const detectLandmarks = async () => {
+      const results = handLandmarker.detect(vidElm);
+      const landmarks = results?.landmarks;
+      // MediaPipe reports mirrored handedness — Left in view = Right hand
+      const handType =
+        results?.handednesses[0]?.[0]?.categoryName === "Left"
+          ? "Right"
+          : "Left";
+
+      ctx.clearRect(0, 0, cnvs.width, cnvs.height);
+
+      if (landmarks && landmarks.length > 0) {
+        ctx.drawImage(vidElm, 0, 0, cnvs.width, cnvs.height);
+
+        if (handType === 'Right') {
+          // dispatch right-hand gesture
+        } else if (handType === 'Left') {
+          // dispatch left-hand gesture
+        }
+        putFingLock(landmarks[0]); // send finger positions to Redux
+      } else {
+        ctx.drawImage(vidElm, 0, 0, cnvs.width, cnvs.height);
+      }
+      requestAnimationFrame(detectLandmarks);
+    };
+    ```
+  </Step>
+
+  <Step title="allGesture.js — Gesture classification from landmarks">
+    The `allGesture.js` utility classifies the 4 supported gestures from the 21 landmark array. It determines per-finger open/closed state then applies gesture logic:
+
+    ```js
+    function rightHandGestures(landmarks) {
+      const [
+        thumbIsOpen,
+        indexIsOpen,
+        middleIsOpen,
+        ringIsOpen,
+        littleIsOpen,
+      ] = [
+        landmarks[3].x < landmarks[2].x && landmarks[4].x < landmarks[2].x,
+        landmarks[7].y < landmarks[6].y && landmarks[8].y < landmarks[6].y,
+        landmarks[11].y < landmarks[10].y && landmarks[12].y < landmarks[10].y,
+        landmarks[15].y < landmarks[14].y && landmarks[16].y < landmarks[14].y,
+        landmarks[19].y < landmarks[17].y && landmarks[18].y < landmarks[17].y,
+      ];
+
+      // All fingers closed = GRAB (show info modal)
+      if (!thumbIsOpen && !indexIsOpen && !middleIsOpen && !ringIsOpen && !littleIsOpen) {
+        return "GRAB";
+      }
+      // Euclidean distance between thumb tip (4) and index tip (8) < 0.25 = CLICK
+      else if (
+        Math.sqrt(
+          Math.pow(landmarks[4].x - landmarks[8].x, 2) +
+          Math.sqrt(Math.pow(landmarks[4].y - landmarks[8].y, 2))
+        ) < 0.25
+      ) {
+        return "CLICK";
+      }
+      // All fingers open + palm facing camera (wrist y > middle tip y) = BACKSPACE
+      else if (
+        thumbIsOpen && indexIsOpen && middleIsOpen &&
+        ringIsOpen && littleIsOpen &&
+        landmarks[0].y > landmarks[12].y
+      ) {
+        return "BACKSPACE";
+      }
+      // Default: open hand, hovering
+      else {
+        return "HOVER";
+      }
+    }
+    ```
+
+    The CLICK detection uses the **Euclidean distance** between the thumb tip (`landmarks[4]`) and the index fingertip (`landmarks[8]`). A threshold of `0.25` was determined empirically through multiple testing iterations.
+
+    <Note>
+      The left hand mirrors the right hand in MediaPipe's coordinate system. The `leftHandGestures` function swaps the BACKSPACE and HOVER conditions accordingly.
+    </Note>
+  </Step>
+
+  <Step title="Redux setup — shared gesture state">
+    The Redux store holds three pieces of state that are shared across all components:
+
+    ```js
+    // gesture.handler.js — initial state
+    const initialState = {
+      gesture: null,     // current gesture string: HOVER, CLICK, GRAB, BACKSPACE
+      finger_locx: null, // array of 21 NormalizedLandmark objects
+      loaded: false,     // whether the model has finished loading
+    };
+    ```
+
+    **Action creators** (gesture.ops.js):
+
+    ```js
+    export const putGesture = (gesture) => ({
+      type: GEST_ASSIGN,
+      payload: gesture,
+    });
+
+    export const putFingLock = (locs) => ({
+      type: FINLOCK_ASSIGN,
+      payload: locs,
+    });
+
+    export const putInitialze = () => ({
+      type: INIT_ASSIGN,
+    });
+    ```
+
+    **Root reducer** combines the gesture reducer under the `hand` key:
+
+    ```js
+    export default combineReducers({
+      hand: gestureHandler,
+    });
+    ```
+
+    Components access state via `state.hand.gesture` and `state.hand.finger_locx`.
+  </Step>
+
+  <Step title="DashboardUI.jsx — ATM interface screens">
+    `DashboardUI` manages the ATM's four screens using a `pageNo` switch:
+
+    ```jsx
+    switch (pageNo) {
+      case 1: return <LoginPage />;
+      case 2: return <PINEntryPage />;
+      case 3: return <AccountDashboard />;
+      case 4: return <FastCashPage />;
+      default: return <></>;
+    }
+    ```
+
+    It uses `CombinedCard` for all interactive buttons, `ModalC1` for gesture instructions, `TimeComponent` for the live clock, and `react-toastify` for user feedback notifications.
+  </Step>
+
+  <Step title="Offline caching with Workbox service worker">
+    The app implements a service worker (`service-worker.js`) using Workbox for offline support and faster repeat loads.
+
+    **Precache all build assets:**
+
+    ```js
+    import { precacheAndRoute } from 'workbox-precaching';
+    precacheAndRoute(self.__WB_MANIFEST);
+    ```
+
+    **Cache static assets (images, audio, the `.task` model file) with StaleWhileRevalidate:**
+
+    ```js
+    registerRoute(
+      ({ url }) =>
+        url.origin === self.location.origin &&
+        (url.pathname.endsWith('.png')  ||
+         url.pathname.endsWith('.mp3')  ||
+         url.pathname.endsWith('.jpg')  ||
+         url.pathname.endsWith('.task') ||
+         url.pathname.endsWith('.gif')),
+      new StaleWhileRevalidate({
+        cacheName: 'assets',
+        plugins: [
+          new ExpirationPlugin({
+            maxEntries: 50,
+            maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+          }),
+        ],
+      })
+    );
+    ```
+
+    The StaleWhileRevalidate strategy serves cached responses immediately while fetching updates in the background — giving users instant load times on repeat visits.
+
+    **Performance results** (Ryzen 5 4600H + NVIDIA GTX 1650Ti, Chrome 116):
+
+    | Metric | Before Service Worker | After Service Worker | Improvement |
+    |--------|-----------------------|----------------------|-------------|
+    | Load Time | 16.8s | 6.1s | **275%** |
+  </Step>
+</Steps>
+
+## Testing the Service Worker
+
+To test offline functionality:
+
+1. Open the [live demo](https://atm-playground.netlify.app) in Chrome
+2. Interact with the app for a few minutes to populate the cache
+3. Open DevTools (`Ctrl+Shift+J` / `Cmd+Option+J`) and go to the **Network** tab
+4. Set throttling to **Offline**
+5. Perform a normal refresh — the app should load from cache
+
+<Warning>
+  Service workers only activate on HTTPS origins (or `localhost`). If you terminate the browser session, the initial load on the next visit requires an internet connection.
+</Warning>
+
+## Conclusion
+
+The MediaPipe ATM Playground demonstrates how real-time hand landmark detection from a browser's webcam can power fully interactive touchless UI — all computed client-side with no server involvement.
+
+The architecture separates concerns cleanly: `Kernel.jsx` owns the ML inference, Redux owns the shared state, and UI components react to gesture data without knowing anything about MediaPipe internals.
+
+To understand how the custom gesture classifier (the CLICK "👌" gesture) was trained, see the next post in this series.
+
+<CardGroup cols={2}>
+  <Card title="Predicting Custom Gestures" icon="wand-magic-sparkles" href="/blog/predicting-custom-gestures">
+    Learn how to train a custom MediaPipe gesture recognizer using Model Maker and integrate it into a web app.
+  </Card>
+  <Card title="MediaPipe Overview" icon="magnifying-glass" href="/blog/mediapipe-overview">
+    A holistic introduction to MediaPipe Solutions, the Tasks API, and the Hand Landmarker's 21-point landmark model.
+  </Card>
+</CardGroup>
