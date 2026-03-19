@@ -35,7 +35,7 @@ The app recognizes four distinct gestures, detected from raw hand landmark data 
 |---|---|---|
 | **HOVER** 🤚 | Open hand, fingers extended | The base/default state. The tip of the index finger acts as the cursor. Move your hand to navigate. |
 | **CLICK** 👌 | Thumb tip and index finger tip pinched together | Triggers a click on the element currently under the cursor. Euclidean distance between landmarks 4 and 8 must be below 0.25. |
-| **UNDO** ✋ | All five fingers fully extended, wrist below all fingertips | Undoes the last action. Equivalent to pressing the **Backspace** key. |
+| **BACKSPACE** ✋ | All five fingers fully extended, wrist below middle DIP joint (right hand) | Undoes the last action. Equivalent to pressing the **Backspace** key. |
 | **GRAB** ✊ | All fingers closed into a fist | Opens the information modal overlay. |
 
 <Info>
@@ -57,8 +57,8 @@ The app recognizes four distinct gestures, detected from raw hand landmark data 
   <Step title="Use CLICK to Interact">
     Pinch your thumb and index finger together (OK gesture) to click the button under the cursor.
   </Step>
-  <Step title="Use UNDO to Correct">
-    Spread all five fingers fully and hold your hand high (wrist below fingertips) to undo your last input. You can also press the **Backspace** key as an alternative.
+  <Step title="Use BACKSPACE to Correct">
+    With your right hand, spread all five fingers fully (wrist below middle DIP joint) to undo your last PIN input. You can also press the **Backspace** key as an alternative.
   </Step>
   <Step title="Use GRAB for Info">
     Close your hand into a fist to open the information modal.

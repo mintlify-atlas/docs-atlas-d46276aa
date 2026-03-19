@@ -7,7 +7,7 @@ description: "Pratyay Banerjee's Google Summer of Code 2023 journey with TensorF
 
 This is the journey book for Pratyay Banerjee's **Google Summer of Code 2023** project with [TensorFlow](https://www.tensorflow.org), building an **interactive touchless ATM demo** powered by MediaPipe's Hand Landmarker.
 
-The project enables users to interact with an ATM interface entirely through **hand gestures** — no physical touch required. Four gestures (HOVER, CLICK, UNDO, GRAB) control a full ATM transaction flow, all computed client-side in the browser using the `@mediapipe/tasks-vision` library.
+The project enables users to interact with an ATM interface entirely through **hand gestures** — no physical touch required. Four gesture states (HOVER, CLICK, BACKSPACE, GRAB) control a full ATM transaction flow, all computed client-side in the browser using the `@mediapipe/tasks-vision` library.
 
 <CardGroup cols={2}>
   <Card title="Introduction" icon="hand-wave" href="/introduction">
@@ -44,7 +44,7 @@ Get the demo running locally in under five minutes.
     How MediaPipe detects 21 hand landmarks in real time.
   </Card>
   <Card title="Gesture Recognition" icon="wand-magic-sparkles" href="/guide/gesture-recognition">
-    Custom gesture logic — HOVER, CLICK, UNDO, GRAB — without GestureRecognizer.
+    Custom gesture logic — HOVER, CLICK, BACKSPACE, GRAB — without GestureRecognizer.
   </Card>
   <Card title="App Components" icon="puzzle-piece" href="/guide/app-components">
     React component breakdown: Kernel, CursorTip, DashboardUI, and more.

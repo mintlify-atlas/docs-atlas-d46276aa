@@ -116,7 +116,7 @@ Once running, here is how the app works:
 |---------|------------|--------|
 | **HOVER** | Open hand (🤚) | Move cursor; hover over elements |
 | **CLICK** | Pinch (👌) | Click the hovered element |
-| **UNDO** | Open palm facing camera (✋) | Undo last PIN input |
+| **BACKSPACE** | Open palm (right hand) / default fallthrough (left hand) (✋) | Undo last PIN input |
 | **GRAB** | Closed fist (✊) | Show the info modal |
 
 ## Architecture Overview
@@ -507,13 +507,7 @@ atm_playground/
     );
     ```
 
-    The StaleWhileRevalidate strategy serves cached responses immediately while fetching updates in the background — giving users instant load times on repeat visits.
-
-    **Performance results** (Ryzen 5 4600H + NVIDIA GTX 1650Ti, Chrome 116):
-
-    | Metric | Before Service Worker | After Service Worker | Improvement |
-    |--------|-----------------------|----------------------|-------------|
-    | Load Time | 16.8s | 6.1s | **275%** |
+    The StaleWhileRevalidate strategy serves cached responses immediately while fetching updates in the background — giving users instant load times on repeat visits. On subsequent visits, the `hand_landmarker.task` model file and all static assets are served from the browser cache, eliminating the need to re-download the largest asset on every page load.
   </Step>
 </Steps>
 

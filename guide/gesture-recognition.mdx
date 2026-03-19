@@ -1,6 +1,6 @@
 ---
 title: "Gesture Recognition"
-description: "Custom gesture detection logic for HOVER, CLICK, UNDO, GRAB, and BACKSPACE."
+description: "Custom gesture detection logic for HOVER, CLICK, BACKSPACE, and GRAB — with different behavior per hand."
 ---
 
 The ATM Playground implements gesture recognition using **custom landmark-based logic** rather than MediaPipe's built-in `GestureRecognizer` task. This gives fine-grained control over thresholds and makes it easy to add or modify gestures by editing a single utility file.
@@ -9,7 +9,7 @@ The ATM Playground implements gesture recognition using **custom landmark-based 
 
 ## Why custom logic instead of GestureRecognizer?
 
-MediaPipe ships a `GestureRecognizer` task that classifies gestures from a pre-trained model. The ATM Playground does not use it for a practical reason: the app needs a very small, specific set of gestures (HOVER, CLICK, UNDO, GRAB) that map directly to landmark geometry. Writing the detection logic from scratch:
+MediaPipe ships a `GestureRecognizer` task that classifies gestures from a pre-trained model. The ATM Playground does not use it for a practical reason: the app needs a very small, specific set of gestures (HOVER, CLICK, BACKSPACE, GRAB) that map directly to landmark geometry. Writing the detection logic from scratch:
 
 - Removes a second model load (faster startup).
 - Gives exact threshold control (tunable per deployment).
@@ -88,9 +88,13 @@ Triggered when the Euclidean distance between the thumb tip (landmark 4) and the
 
 ---
 
-### UNDO / BACKSPACE — open palm
+### BACKSPACE — open palm (right hand)
 
-The open-palm gesture is detected when all five fingers are extended **and** the wrist (landmark 0) is below the middle finger's DIP joint (landmark 12) on the y-axis. Its mapped label differs between hands:
+The open-palm gesture is detected when all five fingers are extended **and** the wrist (landmark 0) is below the middle finger's DIP joint (landmark 12) on the y-axis. Crucially, the result differs between hands:
+
+- **Right hand open palm → `"BACKSPACE"`** — removes the last PIN digit
+- **Left hand open palm → `"HOVER"`** — falls into the HOVER state (not BACKSPACE)
+- **Left hand default fallthrough → `"BACKSPACE"`** — any left-hand pose not matching GRAB, CLICK, or open palm
 
 ```javascript
 // Right hand: open palm → BACKSPACE
@@ -98,25 +102,33 @@ The open-palm gesture is detected when all five fingers are extended **and** the
   thumbIsOpen && indexIsOpen && middleIsOpen && ringIsOpen && littleIsOpen
   && landmarks[0].y > landmarks[12].y
 ) {
-  return "BACKSPACE";
+  return "BACKSPACE";  // Right hand default is HOVER (see below)
 }
 
-// Left hand: open palm → HOVER (default state)
+// Left hand: open palm → HOVER
 } else if (
   thumbIsOpen && indexIsOpen && middleIsOpen && ringIsOpen && littleIsOpen
   && landmarks[0].y > landmarks[12].y
 ) {
-  return "HOVER";
+  return "HOVER";      // Left hand open palm = HOVER
+} else {
+  return "BACKSPACE";  // Left hand default fallthrough = BACKSPACE
 }
 ```
 
 **ATM action:** Removes the last-entered PIN digit (equivalent to pressing the keyboard Backspace key).
 
+<Note>
+  There is no gesture string called `"UNDO"` in the codebase. The undo behavior is always dispatched as `"BACKSPACE"` — either from the gesture or from a keyboard `Backspace` keypress.
+</Note>
+
 ---
 
-### HOVER — default / index up
+### HOVER — default (right hand) / open palm (left hand)
 
-Any gesture that does not match GRAB, CLICK, or UNDO falls through to the default `"HOVER"` state. In practice this is typically the index finger raised with other fingers curled.
+For the **right hand**, any gesture that does not match GRAB, CLICK, or BACKSPACE falls through to `"HOVER"`. In practice this is typically the index finger raised with other fingers curled.
+
+For the **left hand**, the open-palm pose (all fingers extended, wrist below middle DIP) returns `"HOVER"` — this is the opposite of the right hand.
 
 ```javascript
 } else {
@@ -238,10 +250,10 @@ All UI components that need gesture state read it from `state.hand.gesture` via 
   The current gesture string stored in `state.hand.gesture`. Possible values:
 </ParamField>
 
-| Value | Hand shape | Condition |
-|-------|------------|-----------|
-| `"HOVER"` | Index up, others relaxed | Default / fallthrough state |
-| `"CLICK"` | Thumb-index pinch | Distance between landmark 4 and 8 < 0.25 |
-| `"GRAB"` | Closed fist | All five `isOpen` flags are `false` |
-| `"BACKSPACE"` | Open palm (right hand) | All fingers open + wrist below middle DIP |
-| `null` | No hand detected | No landmarks returned by Hand Landmarker |
+| Value | Trigger (right hand) | Trigger (left hand) |
+|-------|----------------------|---------------------|
+| `"HOVER"` | Default fallthrough (not GRAB/CLICK/BACKSPACE) | Open palm with wrist below middle DIP |
+| `"CLICK"` | Thumb-index Euclidean distance < 0.25 | Same |
+| `"GRAB"` | All 5 fingers closed | Same |
+| `"BACKSPACE"` | Open palm with wrist below middle DIP | Default fallthrough |
+| `null` | No hand detected — no landmarks returned by Hand Landmarker | Same |
