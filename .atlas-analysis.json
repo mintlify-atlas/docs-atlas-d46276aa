@@ -1,0 +1,82 @@
+{
+  "projectType": "ai-ml",
+  "projectName": "GSoC '23 — MediaPipe ATM Playground",
+  "projectDescription": "Pratyay Banerjee's Google Summer of Code 2023 journey with TensorFlow, building an interactive touchless ATM web demo powered by MediaPipe Hand Landmarker for contactless gesture-based interactions.",
+  "theme": "palm",
+  "primaryColor": "#040404",
+  "lightColor": null,
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Overview",
+        "groups": [
+          {
+            "group": "Introduction",
+            "pages": ["introduction", "gsoc-overview"]
+          },
+          {
+            "group": "Project",
+            "pages": ["project/architecture", "project/contributions", "project/live-demo"]
+          }
+        ]
+      },
+      {
+        "tab": "Blog",
+        "groups": [
+          {
+            "group": "GSoC Journey",
+            "pages": [
+              "blog/community-bonding",
+              "blog/mediapipe-overview",
+              "blog/building-interactive-demo",
+              "blog/predicting-custom-gestures"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Technical Guide",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": ["guide/quickstart", "guide/installation"]
+          },
+          {
+            "group": "Implementation",
+            "pages": [
+              "guide/hand-landmarker",
+              "guide/gesture-recognition",
+              "guide/app-components",
+              "guide/offline-support"
+            ]
+          },
+          {
+            "group": "ML Model",
+            "pages": ["guide/model-maker", "guide/custom-gestures"]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Contactless gesture-based ATM interaction using MediaPipe Hand Landmarker",
+    "Real-time detection of 21 hand landmarks via webcam feed",
+    "Four custom gestures: HOVER, CLICK, UNDO, and GRAB",
+    "React + Redux state management for gesture-driven UI updates",
+    "Offline PWA support via Workbox service worker and precaching",
+    "Custom ML gesture classifier built with MediaPipe Model Maker",
+    "GDPR-compliant client-side inference (no data leaves the device)",
+    "GSoC 2023 contributions to googlesamples/mediapipe repository"
+  ],
+  "publicApiSurface": [
+    "HandLandmarker task (@mediapipe/tasks-vision)",
+    "allGesture.js — gesture detection logic (HOVER, CLICK, UNDO, GRAB, BACKSPACE)",
+    "Kernel.jsx — core hand landmark processing and gesture dispatch",
+    "CombinedCard.jsx — gesture-reactive interactive card component",
+    "CursorTip.jsx — hand-tracked cursor overlay component",
+    "gesture Redux store — state management for hand gestures and finger coordinates",
+    "MP_ModelMaker__CustomGestureClassifier.ipynb — custom gesture training notebook",
+    "service-worker.js — offline caching with Workbox stale-while-revalidate strategy"
+  ]
+}
